@@ -5,11 +5,61 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+// enums
+enum Role {
+  ATHLETE
+  COACH
+  ADMIN
+}
+
+// models
+model User {
+  id String @id @default(uuid())
+  email String @unique
+  userName String @unique 
+  password String
+  firstName String
+  lastName String
+  role Role @default(ATHLETE)
+  createdAT DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+
+  profile Profile?
+}
+
+model Profile {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+
+  // Personal Information
+  height            Float
+  weight            Float
+  age               Int
+  gender            String
+  sport             String
+  fitnessLevel      String
+
+  // Fitness Goals (Store as JSON array)
+  fitnessGoals      Json?    // e.g., ["weight_loss", "muscle_gain"]
+
+  // Calculated Metrics
+  bmi               Float
+  bmr               Float
+  tdee              Float
+  profileCompletion Int      @default(0)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
 }
