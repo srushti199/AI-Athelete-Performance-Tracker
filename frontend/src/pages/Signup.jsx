@@ -1,18 +1,18 @@
 import { useState } from "react";
+import { X } from "lucide-react";
 import Button from "../components/Button";
 import InputField from "../components/inputField";
 import { validateSignup } from "../utils/validations";
 import axios from "axios";
 
-function Signup() {
-  // const navigate = useNavigate();
-  //useState hook
+function Signup({ onClose }) {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
   });
+
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
@@ -33,16 +33,16 @@ function Signup() {
     e.preventDefault();
 
     const newErrors = validateSignup(formData);
-
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      let response = "";
       try {
-        response = await axios.post("http://127.0.0.1:4000/api/auth/signup", formData);
+        await axios.post("http://127.0.0.1:4000/api/auth/signup", formData);
+
         console.log("Account created!", formData);
       } catch (error) {
         console.error("Signup failed:", error);
+
         if (error.response) {
           console.log("Backend error:", error.response.data);
         } else {
@@ -53,50 +53,67 @@ function Signup() {
   };
 
   return (
-    <div className='min-h-screen bg-gray-100 flex items-center justify-center p-2'>
-      {/* Main Signup Card */}
-      <div className='w-full max-w-4xl bg-white rounded-lg overflow-hidden flex'>
-        {/* Left Section */}
-        <div className='w-1/2 bg-[#081a33] text-white flex flex-col p-9 justify-between '>
-          <h2 className='text-2xl font-bold tracking-wide'>AtheliX</h2>
+    <div className='relative w-full max-w-5xl overflow-y-auto rounded-[2rem] border border-white/70 bg-[#fbfaf8] shadow-2xl shadow-[#17233f]/25'>
+      <button
+        type='button'
+        onClick={onClose}
+        className='absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-[#17233f]'
+        aria-label='Close signup form'
+      >
+        <X size={20} />
+      </button>
 
-          {/* main */}
-          <div className='mb-2'>
-            <h3 className='text-3xl font-bold leading-tight'>
-              Join the next <br />
-              generation of elite athletes.
+      <div className='grid md:grid-cols-2'>
+        <section className='flex min-h-[560px] flex-col justify-between bg-[#17233f] p-8 text-white sm:p-10'>
+          <h2 className='text-xl font-bold tracking-tight'>Athlix</h2>
+
+          <div>
+            <p className='text-xs font-bold tracking-[0.16em] text-[#8eace2]'>TRAIN WITH PURPOSE</p>
+
+            <h3 className='mt-5 text-4xl font-bold leading-tight tracking-tight'>
+              Your next best
+              <br />
+              session starts here.
             </h3>
-            <p className='text-sm text-gray-300 mt-6'>
-              Get personalized AI-driven insights to push your limits and reach your peak
-              performance.
+
+            <p className='mt-6 max-w-sm text-sm leading-6 text-[#c5d2e8]'>
+              Create your athlete profile and receive personalized training, nutrition, recovery,
+              and performance guidance.
             </p>
-            <p className='text-xs text-gray-300 mt-6'>Trusted by 10,000+ athletes</p>
+
+            <p className='mt-8 text-xs font-semibold text-[#8eace2]'>
+              BUILT FOR PROGRESS, ONE SESSION AT A TIME
+            </p>
           </div>
-        </div>
+        </section>
 
-        {/* Right Section */}
-        <div className='w-1/2 bg-white p-9'>
-          <h2 className='text-2xl font-bold text-gray-900'>Create an account</h2>
-          <p className='text-xs text-gray-400 mt-1'>Start your 14 day trial today</p>
+        <section className='bg-[#fbfaf8] p-8 sm:p-10'>
+          <h2 className='text-3xl font-bold tracking-tight text-[#17233f]'>Create your account</h2>
 
-          <Button type='button' className='border border-gray-200 text-gray-900'>
+          <p className='mt-2 text-sm text-slate-500'>
+            Start building your personalized athlete plan.
+          </p>
+
+          <Button
+            type='button'
+            className='mt-7 border border-slate-300 bg-white text-[#17233f] hover:border-[#31579f]'
+          >
             Continue with Google
           </Button>
 
-          <div className='flex items-center gap-3 mt-4'>
-            <div className='flex-1 h-px bg-gray-200'></div>
+          <div className='mt-5 flex items-center gap-3'>
+            <div className='h-px flex-1 bg-slate-200' />
 
-            <span className='text-[9px] font-medium text-gray-400'>OR CONTINUE WITH EMAIL</span>
+            <span className='text-[10px] font-bold tracking-wide text-slate-400'>
+              OR CONTINUE WITH EMAIL
+            </span>
 
-            <div className='flex-1 h-px bg-gray-200'></div>
+            <div className='h-px flex-1 bg-slate-200' />
           </div>
 
-          {/* Form */}
-
-          <form onSubmit={handleSubmit}>
-            <div className='flex gap-2 mt-3'>
-              {/* First name */}
-              <div>
+          <form onSubmit={handleSubmit} className='mt-5'>
+            <div className='flex gap-3'>
+              <div className='flex-1'>
                 <InputField
                   label='First Name'
                   name='firstName'
@@ -109,8 +126,7 @@ function Signup() {
                 />
               </div>
 
-              {/* Last name */}
-              <div>
+              <div className='flex-1'>
                 <InputField
                   label='Last Name'
                   name='lastName'
@@ -124,8 +140,7 @@ function Signup() {
               </div>
             </div>
 
-            {/* Email */}
-            <div className='mt-3'>
+            <div className='mt-4'>
               <InputField
                 label='Email'
                 name='email'
@@ -139,8 +154,7 @@ function Signup() {
               />
             </div>
 
-            {/* Password */}
-            <div className='mt-3'>
+            <div className='mt-4'>
               <InputField
                 label='Password'
                 name='password'
@@ -148,22 +162,21 @@ function Signup() {
                 autoComplete='new-password'
                 value={formData.password}
                 type='password'
-                placeholder='Enter your password'
+                placeholder='Create a secure password'
                 onChange={handleChange}
                 error={errors.password}
               />
 
-              <p className='text-xs text-gray-400 mt-2'>
-                Must be at least 8 characters with a number and symbol
+              <p className='mt-2 text-xs leading-5 text-slate-500'>
+                Use at least 8 characters, including a number and symbol.
               </p>
             </div>
 
-            {/* create account button */}
-            <Button type='submit' className='bg-blue-500 text-white'>
+            <Button type='submit' className='mt-6 bg-[#31579f] text-white hover:bg-[#26477f]'>
               Create account
             </Button>
           </form>
-        </div>
+        </section>
       </div>
     </div>
   );

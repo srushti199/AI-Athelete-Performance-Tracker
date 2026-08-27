@@ -20,7 +20,7 @@ const createSendToken = (user, res, statusCode) => {
   });
 };
 const signup = catchAsync(async (req, res, next) => {
-  const { email, userName, password, firstName, lastName, role } = req.body;
+  const { email, password, firstName, lastName } = req.body;
 
   // Validate required fields
   if (!email || !password || !firstName || !lastName) {
@@ -30,7 +30,7 @@ const signup = catchAsync(async (req, res, next) => {
   //check if user already exist
   const existingUser = await prisma.User.findFirst({
     where: {
-      OR: [{ email: email }, { userName: userName }],
+      email,
     },
   });
   if (existingUser) {
@@ -43,11 +43,10 @@ const signup = catchAsync(async (req, res, next) => {
   const user = await prisma.User.create({
     data: {
       email,
-      userName,
       password: HashedPassword,
       firstName,
       lastName,
-      role,
+      role: "ATHLETE",
     },
   });
 

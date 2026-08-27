@@ -16,7 +16,7 @@ const app = express();
 app.use(cors()); // Allow frontend to talk to backend
 app.use(express.json()); // Allow server to parse JSON body data
 app.use("/api/auth", authRoutes);
-app.use("/api/profile", protect, profileRoutes);
+//app.use("/api/profile", protect, profileRoutes);
 
 // Catch-all for unknown routes (MUST be at the very bottom
 app.use((req, res, next) => {

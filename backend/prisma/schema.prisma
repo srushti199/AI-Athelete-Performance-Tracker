@@ -23,43 +23,50 @@ enum Role {
 
 // models
 model User {
-  id String @id @default(uuid())
-  email String @unique
-  userName String @unique 
+  id           String   @id @default(uuid())
+  email        String   @unique
   password String
-  firstName String
-  lastName String
-  role Role @default(ATHLETE)
-  createdAT DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-
-  profile Profile?
+  firstName    String
+  lastName     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  profile      AthleteProfile?
 }
 
-model Profile {
-  id                String   @id @default(uuid())
-  userId            String   @unique
+model AthleteProfile {
+  id                    String    @id @default(uuid())
+  userId                String    @unique
+  sport                 String?
+  competitionLevel      String?
+  activityLevel         String?
+  age                   Int?
+  gender                String?
+  heightCm              Decimal?  @db.Decimal(5, 1)
+  weightKg              Decimal?  @db.Decimal(5, 1)
+  injuryHistory         String?   @db.Text
+  onboardingStep        Int       @default(0)
+  onboardingCompletedAt DateTime?
 
-  // Personal Information
-  height            Float
-  weight            Float
-  age               Int
-  gender            String
-  sport             String
-  fitnessLevel      String
+  user         User          @relation(fields: [userId], references: [id])
+  profileGoals ProfileGoal[]
+  injuries     Injury[]
+}
 
-  // Fitness Goals (Store as JSON array)
-  fitnessGoals      Json?    // e.g., ["weight_loss", "muscle_gain"]
+model ProfileGoal {
+  id        String         @id @default(uuid())
+  athleteId String
+  goalKey   String
+  athlete   AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
-  // Calculated Metrics
-  bmi               Float
-  bmr               Float
-  tdee              Float
-  profileCompletion Int      @default(0)
+  @@unique([athleteId, goalKey])
+}
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id])
+model Injury {
+  id             String         @id @default(uuid())
+  athleteId      String
+  injuryName     String
+  bodyRegion     String?
+  severity       String
+  recoveryStatus String         @default("OPEN")
+  athlete        AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 }

@@ -1,22 +1,29 @@
 import { useState } from "react";
+import { X } from "lucide-react";
 import Button from "../components/Button";
 import InputField from "../components/inputField";
 import { validateLogin } from "../utils/validations";
 import axios from "axios";
-import { Link } from "react-router-dom";
 
-function Login() {
+function Login({ onClose, onSwitchToSignup }) {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
-  const [errors, setError] = useState({});
+
+  const [errors, setErrors] = useState({});
 
   const onChange = (e) => {
     const { name, value } = e.target;
+
     setFormData({
       ...formData,
       [name]: value,
+    });
+
+    setErrors({
+      ...errors,
+      [name]: "",
     });
   };
 
@@ -24,14 +31,16 @@ function Login() {
     e.preventDefault();
 
     const validationErrors = validateLogin(formData);
-    setError(validationErrors);
+    setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length === 0) {
       try {
-        const response = await axios.post("http://127.0.0.1:4000/api/auth/login", formData);
-        console.log("user logged in");
+        await axios.post("http://127.0.0.1:4000/api/auth/login", formData);
+
+        console.log("User logged in");
       } catch (error) {
         console.error("Login failed:", error);
+
         if (error.response) {
           console.log("Backend error:", error.response.data);
         } else {
@@ -40,99 +49,121 @@ function Login() {
       }
     }
   };
+
   return (
-    <div className='min-h-screen bg-gray-100 flex items-center justify-center p-2'>
-      {/* Main login card*/}
-      <div className='w-full max-w-4xl flex overflow-hidden bg-white rounded-lg'>
-        {/* Left */}
-        <div className='w-1/2 bg-[#081a33] text-white flex flex-col p-9 justify-between'>
-          <h2 className='text-2xl font-bold'>AthlitX</h2>
+    <div className='relative w-full max-w-5xl overflow-y-auto rounded-[2rem] border border-white/70 bg-[#fbfaf8] shadow-2xl shadow-[#17233f]/25'>
+      <button
+        type='button'
+        onClick={onClose}
+        className='absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-[#17233f]'
+        aria-label='Close login form'
+      >
+        <X size={20} />
+      </button>
 
-          {/* Main content */}
+      <div className='grid md:grid-cols-2'>
+        <section className='flex min-h-[560px] flex-col justify-between bg-[#17233f] p-8 text-white sm:p-10'>
+          <h2 className='text-xl font-bold tracking-tight'>Athlix</h2>
 
-          <div className='mb-1'>
-            <div className='mb-3'>
-              <h3 className='text-3xl font-bold leading-tight mb-3'>
-                Welcome back, <br /> athlete.
-              </h3>
-              <p className='text-sm text-gray-300'>
-                Login to access your personalized training matrix and AI recommendation
-              </p>
-            </div>
+          <div>
+            <p className='text-xs font-bold tracking-[0.16em] text-[#8eace2]'>WELCOME BACK</p>
 
-            {/* Live Insight Card */}
-            <div className='mt-1 w-full max-w-sm border border-gray-600 bg-[#122641] rounded-lg p-4'>
-              <div className='flex items-center gap-2 mb-3'>
-                <span className='w-2 h-2 bg-green-400 rounded-full'></span>
-                <span className='text-[9px] font-semibold text-gray-300'> LIVE INSIGHT </span>
+            <h3 className='mt-5 text-4xl font-bold leading-tight tracking-tight'>
+              Ready for your
+              <br />
+              next best session?
+            </h3>
+
+            <p className='mt-6 max-w-sm text-sm leading-6 text-[#c5d2e8]'>
+              Continue tracking your training, recovery, nutrition, and goals with personalized
+              AI-powered guidance.
+            </p>
+
+            <div className='mt-8 rounded-2xl border border-white/10 bg-white/5 p-4'>
+              <div className='flex items-center gap-2'>
+                <span className='h-2 w-2 rounded-full bg-[#9bb8eb]' />
+                <span className='text-[10px] font-bold tracking-[0.14em] text-[#8eace2]'>
+                  ATHLIX INSIGHT
+                </span>
               </div>
-              <p className='text-[10px] text-gray-300 italic leading-relaxed'>
-                " Train smarter with personalized AI recommendations based on your performance."
+
+              <p className='mt-3 text-sm leading-6 text-[#dce7fa]'>
+                Small, consistent actions create meaningful performance gains.
               </p>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Right */}
-        <div className='w-1/2 flex flex-col p-9 justify-between'>
-          <h2 className='text-2xl font-bold text-gray-900'>Welcome back</h2>
-          <p className='text-xs text-gray-400 mt-1'>Enter your credentials to access dashboard</p>
+        <section className='bg-[#fbfaf8] p-8 sm:p-10'>
+          <h2 className='text-3xl font-bold tracking-tight text-[#17233f]'>Welcome back</h2>
 
-          <Button type='button' className='border border-gray-200 text-gray-900'>
+          <p className='mt-2 text-sm text-slate-500'>Sign in to continue your athlete journey.</p>
+
+          <Button
+            type='button'
+            className='mt-7 border border-slate-300 bg-white text-[#17233f] hover:border-[#31579f]'
+          >
             Continue with Google
           </Button>
 
-          <div className='flex items-center gap-3 mt-4'>
-            <div className='flex-1 h-px bg-gray-200'></div>
+          <div className='mt-5 flex items-center gap-3'>
+            <div className='h-px flex-1 bg-slate-200' />
 
-            <span className='text-[9px] font-medium text-gray-400'>OR CONTINUE WITH EMAIL</span>
+            <span className='text-[10px] font-bold tracking-wide text-slate-400'>
+              OR CONTINUE WITH EMAIL
+            </span>
 
-            <div className='flex-1 h-px bg-gray-200'></div>
+            <div className='h-px flex-1 bg-slate-200' />
           </div>
 
-          {/* Form */}
-
-          <form onSubmit={handleSubmit}>
-            <div className='mt-6'>
+          <form onSubmit={handleSubmit} className='mt-5'>
+            <div>
               <InputField
-                label='email'
+                label='Email'
                 name='email'
                 value={formData.email}
                 type='email'
-                placeholder='Email'
+                placeholder='email@example.com'
                 onChange={onChange}
                 id='email'
                 autoComplete='email'
                 error={errors.email}
               />
             </div>
-            <div className='mt-6'>
+
+            <div className='mt-4'>
               <InputField
-                label='password'
+                label='Password'
                 name='password'
                 value={formData.password}
                 type='password'
-                placeholder='password'
+                placeholder='Enter your password'
                 onChange={onChange}
                 id='password'
-                autoComplete='password'
+                autoComplete='current-password'
                 error={errors.password}
               />
             </div>
 
-            <div className='flex flex-col justify-center items-center'>
-              <Button type='submit' className='bg-blue-500 text-white'>
-                Sign in
-              </Button>
-              <p className='text-xs text-gray-600 mt-2'>
-                Don't have an account?{" "}
-                <Link to='/signup' className='text-blue-500 font-medium hover:underline'>
-                  Sign up for free
-                </Link>
-              </p>
-            </div>
+            <Button
+              type='submit'
+              className='mt-6 w-full bg-[#31579f] text-white hover:bg-[#26477f]'
+            >
+              Sign in
+            </Button>
+
+            <p className='mt-4 text-center text-sm text-slate-600'>
+              Don&apos;t have an account?{" "}
+              <button
+                type='button'
+                onClick={onSwitchToSignup}
+                className='font-semibold text-[#31579f] hover:underline'
+              >
+                Sign up for free
+              </button>
+            </p>
           </form>
-        </div>
+        </section>
       </div>
     </div>
   );
