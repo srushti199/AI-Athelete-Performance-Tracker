@@ -5,11 +5,68 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+// enums
+enum Role {
+  ATHLETE
+  COACH
+  ADMIN
+}
+
+// models
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password String
+  firstName    String
+  lastName     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  profile      AthleteProfile?
+}
+
+model AthleteProfile {
+  id                    String    @id @default(uuid())
+  userId                String    @unique
+  sport                 String?
+  competitionLevel      String?
+  activityLevel         String?
+  age                   Int?
+  gender                String?
+  heightCm              Decimal?  @db.Decimal(5, 1)
+  weightKg              Decimal?  @db.Decimal(5, 1)
+  injuryHistory         String?   @db.Text
+  onboardingStep        Int       @default(0)
+  onboardingCompletedAt DateTime?
+
+  user         User          @relation(fields: [userId], references: [id])
+  profileGoals ProfileGoal[]
+  injuries     Injury[]
+}
+
+model ProfileGoal {
+  id        String         @id @default(uuid())
+  athleteId String
+  goalKey   String
+  athlete   AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@unique([athleteId, goalKey])
+}
+
+model Injury {
+  id             String         @id @default(uuid())
+  athleteId      String
+  injuryName     String
+  bodyRegion     String?
+  severity       String
+  recoveryStatus String         @default("OPEN")
+  athlete        AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 }
