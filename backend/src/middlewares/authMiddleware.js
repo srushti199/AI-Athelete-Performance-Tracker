@@ -5,11 +5,7 @@ const { catchAsync } = require("../utils/catchAsync");
 
 exports.protect = catchAsync(async (req, res, next) => {
   //Get the token from req header
-  let token;
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-    token = req.headers.authorization.split(" ")[1];
-  }
-
+  const token = req.cookies.token;
   if (!token) {
     return next(new AppError("You are not logged in please login to get access", 401));
   }

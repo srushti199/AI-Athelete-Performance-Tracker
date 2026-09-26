@@ -11,6 +11,12 @@ const signToken = (id) => {
 };
 const createSendToken = (user, res, statusCode) => {
   const token = signToken(user.id);
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
   res.status(statusCode).json({
     status: "success",
     token,
@@ -46,7 +52,6 @@ const signup = catchAsync(async (req, res, next) => {
       password: HashedPassword,
       firstName,
       lastName,
-      role: "ATHLETE",
     },
   });
 
