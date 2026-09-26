@@ -6,6 +6,7 @@ const globalErrorHandler = require("./src/controllers/errorController");
 const authRoutes = require("./src/routes/authRoutes");
 const profileRoutes = require("./src/routes/profileRoutes");
 const { protect } = require("./src/middlewares/authMiddleware");
+const cookieParser = require("cookie-parser");
 
 // Load environment variables
 dotenv.config();
@@ -13,10 +14,16 @@ dotenv.config();
 const app = express();
 
 // Middleware (Order matters!)
-app.use(cors()); // Allow frontend to talk to backend
+app.use(cookieParser()); // Allow us to access req.cookies
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  }),
+); // Allow frontend to talk to backend
 app.use(express.json()); // Allow server to parse JSON body data
 app.use("/api/auth", authRoutes);
-//app.use("/api/profile", protect, profileRoutes);
+app.use("/api/profile", protect, profileRoutes);
 
 // Catch-all for unknown routes (MUST be at the very bottom
 app.use((req, res, next) => {

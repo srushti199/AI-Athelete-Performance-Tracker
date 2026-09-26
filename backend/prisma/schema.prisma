@@ -21,6 +21,12 @@ enum Role {
   ADMIN
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 // models
 model User {
   id           String   @id @default(uuid())
@@ -40,7 +46,7 @@ model AthleteProfile {
   competitionLevel      String?
   activityLevel         String?
   age                   Int?
-  gender                String?
+  gender                Gender?
   heightCm              Decimal?  @db.Decimal(5, 1)
   weightKg              Decimal?  @db.Decimal(5, 1)
   injuryHistory         String?   @db.Text
