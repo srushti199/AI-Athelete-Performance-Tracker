@@ -7,6 +7,7 @@ const authRoutes = require("./src/routes/authRoutes");
 const profileRoutes = require("./src/routes/profileRoutes");
 const { protect } = require("./src/middlewares/authMiddleware");
 const cookieParser = require("cookie-parser");
+const recommendationRoutes = require("./src/routes/recommendationRoutes");
 
 // Load environment variables
 dotenv.config();
@@ -24,6 +25,11 @@ app.use(
 app.use(express.json()); // Allow server to parse JSON body data
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", protect, profileRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/profile", protect, profileRoutes);
+
+// Workout recommendations
+app.use("/api/recommendations", recommendationRoutes);
 
 // Catch-all for unknown routes (MUST be at the very bottom
 app.use((req, res, next) => {
