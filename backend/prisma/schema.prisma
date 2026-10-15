@@ -56,6 +56,8 @@ model AthleteProfile {
   user         User          @relation(fields: [userId], references: [id])
   profileGoals ProfileGoal[]
   injuries     Injury[]
+
+  workoutPreference WorkoutPreference?
 }
 
 model ProfileGoal {
@@ -75,4 +77,49 @@ model Injury {
   severity       String
   recoveryStatus String         @default("OPEN")
   athlete        AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+}
+
+
+model WorkoutPreference {
+  id                 String   @id @default(uuid())
+  athleteId          String   @unique
+  difficulty         String?
+  sessionDuration    Int?
+  workoutDescription String?  @db.Text
+
+  athlete      AthleteProfile        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  equipment    AthleteEquipment[]
+  workoutTypes AthleteWorkoutType[]
+  targetAreas  AthleteTargetArea[]
+}
+
+
+model AthleteEquipment {
+  id           String @id @default(uuid())
+  preferenceId String
+  equipment    String
+
+  preference WorkoutPreference @relation(fields: [preferenceId], references: [id], onDelete: Cascade)
+
+  @@unique([preferenceId, equipment])
+}
+
+model AthleteWorkoutType {
+  id           String @id @default(uuid())
+  preferenceId String
+  workoutType  String
+
+  preference WorkoutPreference @relation(fields: [preferenceId], references: [id], onDelete: Cascade)
+
+  @@unique([preferenceId, workoutType])
+}
+
+model AthleteTargetArea {
+  id           String @id @default(uuid())
+  preferenceId String
+  targetArea   String
+
+  preference WorkoutPreference @relation(fields: [preferenceId], references: [id], onDelete: Cascade)
+
+  @@unique([preferenceId, targetArea])
 }
