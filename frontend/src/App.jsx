@@ -6,6 +6,9 @@ import OnboardingStep1 from "./pages/OnboardingStep1";
 import OnboardingStep2 from "./pages/OnboardingStep2";
 import OnboardingStep3 from "./pages/OnboardingStep3";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import Recommendations from "./pages/Recommendations";
 
 function App() {
   return (
@@ -19,6 +22,9 @@ function App() {
           <Route path='/o3' element={<OnboardingStep3 />} />
           <Route path='/login' element={<Login />} />
           <Route path='/signup' element={<Signup />} />
+          <Route path='/dashboard' element={<Dashboard />} />
+          <Route path='/profile' element={<Profile />} />
+          <Route path='/recommendations' element={<Recommendations />} />
         </Routes>
       </BrowserRouter>
     </div>
