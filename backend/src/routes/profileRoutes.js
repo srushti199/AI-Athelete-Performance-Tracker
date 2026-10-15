@@ -11,4 +11,7 @@ router.patch("/onboardingStep3", onboardingStep.onBoardingStep3);
 router.get("/", profileController.getProfile);
 router.patch("/", profileController.updateProfile);
 
+// Delete only the selected injury record.
+router.delete("/injuries/:injuryId", profileController.deleteInjury);
+
 module.exports = router;

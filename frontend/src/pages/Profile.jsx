@@ -6,40 +6,40 @@ import {
   Mail,
   Mountain,
   Pencil,
+  Plus,
   Settings2,
   Target,
   Trophy,
+  Trash2,
   UserRound,
+  X,
 } from "lucide-react";
 import DashboardLayout from "../components/dashboard/layout/DashboardLayout";
-import { getProfile, updateProfile } from "../api/profileApi";
+import { getProfile, updateProfile, deleteInjury, addInjury } from "../api/profileApi";
 
 const emptyProfile = {
   fullName: "",
   email: "",
   gender: "",
-  dateOfBirth: "",
   height: "",
   weight: "",
   fitnessLevel: "",
-  primaryGoal: "",
   sport: "",
   competitionLevel: "",
-  equipment: "",
-  workoutType: "",
-  difficulty: "",
-  targetArea: "",
-  sessionDuration: "",
-  category: "",
-  workoutDescription: "",
   goals: [],
+  equipment: [],
+  workoutTypes: [],
+  targetAreas: [],
+  difficulty: "",
+  sessionDuration: "",
+  workoutDescription: "",
   injuries: [],
 };
 
 const choices = {
   gender: ["Female", "Male", "Other", "Prefer not to say"],
   fitnessLevel: ["Beginner", "Intermediate", "Advanced"],
-  primaryGoal: [
+  goals: [
     "Muscle gain",
     "Strength",
     "Weight loss",
@@ -59,7 +59,16 @@ const choices = {
     "Athletics",
     "Other",
   ],
-  competitionLevel: ["Recreational", "Amateur", "Competitive", "Professional"],
+  competitionLevel: [
+    "Recreational",
+    "Amateur",
+    "Competitive",
+    "Professional",
+    "District",
+    "State",
+    "National",
+    "International",
+  ],
   equipment: [
     "Body weight",
     "Dumbbells",
@@ -70,9 +79,8 @@ const choices = {
     "Full gym",
     "Other",
   ],
-  workoutType: ["Strength", "Cardio", "Flexibility", "Mobility", "Plyometrics", "Sports-specific"],
-  difficulty: ["Beginner", "Intermediate", "Advanced"],
-  targetArea: [
+  workoutTypes: ["Strength", "Cardio", "Flexibility", "Mobility", "Plyometrics", "Sports-specific"],
+  targetAreas: [
     "Full body",
     "Chest",
     "Back",
@@ -83,37 +91,12 @@ const choices = {
     "Glutes",
     "Cardiovascular endurance",
   ],
-  category: [
-    "Strength",
-    "Cardio",
-    "Stretching",
-    "Plyometrics",
-    "Powerlifting",
-    "Strongman",
-    "Olympic weightlifting",
-    "Other",
-  ],
-  sessionDuration: ["15 minutes", "30 minutes", "45 minutes", "60 minutes", "90 minutes"],
+  difficulty: ["Beginner", "Intermediate", "Advanced"],
+  sessionDuration: [15, 30, 45, 60, 90],
 };
 
-const fields = [
-  ["fullName", "Full name", "text"],
-  ["email", "Email address", "email"],
-  ["gender", "Gender"],
-  ["dateOfBirth", "Date of birth", "date"],
-  ["height", "Height (cm)", "number"],
-  ["weight", "Weight (kg)", "number"],
-  ["sport", "Sport"],
-  ["fitnessLevel", "Activity / fitness level"],
-  ["competitionLevel", "Competition level"],
-  ["equipment", "Equipment available"],
-  ["primaryGoal", "Workout goal / target"],
-  ["targetArea", "Target body part"],
-  ["workoutType", "Workout type"],
-  ["difficulty", "Difficulty"],
-  ["category", "Exercise category"],
-  ["sessionDuration", "Session duration"],
-];
+const inputClass =
+  "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50";
 
 function Section({ icon: Icon, title, subtitle, children, action }) {
   return (
@@ -123,7 +106,7 @@ function Section({ icon: Icon, title, subtitle, children, action }) {
           <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700'>
             <Icon size={20} />
           </span>
-          <div>
+          <div className='min-w-0'>
             <h2 className='font-bold text-[#193663]'>{title}</h2>
             <p className='mt-1 text-sm leading-5 text-slate-500'>{subtitle}</p>
           </div>
@@ -135,21 +118,12 @@ function Section({ icon: Icon, title, subtitle, children, action }) {
   );
 }
 
-function ProfileInput({ field, label, value, onChange, type = "text", options }) {
-  const className =
-    "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50";
-
+function Field({ label, name, value, onChange, options, type = "text" }) {
   return (
     <label className='block min-w-0'>
       <span className='text-sm font-medium text-slate-700'>{label}</span>
       {options ? (
-        <select
-          name={field}
-          value={value ?? ""}
-          onChange={onChange}
-          className={className}
-          disabled={field === "email"}
-        >
+        <select name={name} value={value ?? ""} onChange={onChange} className={inputClass}>
           <option value=''>Select {label.toLowerCase()}</option>
           {options.map((option) => (
             <option key={option} value={option}>
@@ -159,17 +133,56 @@ function ProfileInput({ field, label, value, onChange, type = "text", options })
         </select>
       ) : (
         <input
-          name={field}
+          name={name}
           type={type}
           min={type === "number" ? "0" : undefined}
           step={type === "number" ? "any" : undefined}
           value={value ?? ""}
           onChange={onChange}
-          readOnly={field === "email"}
-          className={`${className} ${field === "email" ? "bg-slate-50 text-slate-500" : ""}`}
+          className={inputClass}
         />
       )}
     </label>
+  );
+}
+
+function MultiSelect({ label, name, options, selected = [], onChange }) {
+  const toggle = (option) => {
+    const updated = selected.includes(option)
+      ? selected.filter((item) => item !== option)
+      : [...selected, option];
+
+    onChange(name, updated);
+  };
+
+  return (
+    <fieldset className='min-w-0'>
+      <legend className='text-sm font-medium text-slate-700'>{label}</legend>
+      <div className='mt-2 flex flex-wrap gap-2'>
+        {options.map((option) => {
+          const checked = selected.includes(option);
+
+          return (
+            <label
+              key={option}
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition ${
+                checked
+                  ? "border-blue-300 bg-blue-50 font-medium text-[#244C91]"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <input
+                type='checkbox'
+                checked={checked}
+                onChange={() => toggle(option)}
+                className='accent-[#244C91]'
+              />
+              {option}
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 
@@ -177,9 +190,11 @@ function normalizeGender(value) {
   const normalized = String(value || "")
     .trim()
     .toUpperCase();
+
   if (normalized === "MALE") return "Male";
   if (normalized === "FEMALE") return "Female";
   if (normalized === "OTHER") return "Other";
+
   return value || "";
 }
 
@@ -188,6 +203,7 @@ function profileFromResponse(response) {
   const user = data.user ?? {};
   const athlete = data.profile ?? data.athleteProfile ?? {};
   const preference = athlete.workoutPreference ?? {};
+
   const goals = Array.isArray(athlete.profileGoals)
     ? athlete.profileGoals.map((goal) => goal.goalKey).filter(Boolean)
     : [];
@@ -197,35 +213,58 @@ function profileFromResponse(response) {
     fullName: [user.firstName, user.lastName].filter(Boolean).join(" "),
     email: user.email || "",
     gender: normalizeGender(athlete.gender),
-    // dateOfBirth and category are not currently stored by the Prisma schema.
-    dateOfBirth: athlete.dateOfBirth ? String(athlete.dateOfBirth).slice(0, 10) : "",
     height: athlete.heightCm ?? "",
     weight: athlete.weightKg ?? "",
     fitnessLevel: athlete.activityLevel || "",
     sport: athlete.sport || "",
     competitionLevel: athlete.competitionLevel || "",
-    primaryGoal: goals[0] || "",
     goals,
-    injuries: Array.isArray(athlete.injuries) ? athlete.injuries : [],
-    equipment: preference.equipment?.[0]?.equipment || "",
-    workoutType: preference.workoutTypes?.[0]?.workoutType || "",
+    equipment: Array.isArray(preference.equipment)
+      ? preference.equipment.map((item) => item.equipment).filter(Boolean)
+      : [],
+    workoutTypes: Array.isArray(preference.workoutTypes)
+      ? preference.workoutTypes.map((item) => item.workoutType).filter(Boolean)
+      : [],
+    targetAreas: Array.isArray(preference.targetAreas)
+      ? preference.targetAreas.map((item) => item.targetArea).filter(Boolean)
+      : [],
     difficulty: preference.difficulty || "",
-    targetArea: preference.targetAreas?.[0]?.targetArea || "",
-    sessionDuration:
-      preference.sessionDuration == null ? "" : `${preference.sessionDuration} minutes`,
-    category: athlete.category || "",
+    sessionDuration: preference.sessionDuration ?? "",
     workoutDescription: preference.workoutDescription || "",
+    injuries: Array.isArray(athlete.injuries) ? athlete.injuries : [],
   };
 }
 
 export default function Profile() {
   const [profile, setProfile] = useState(null);
-  const [draft, setDraft] = useState({});
+  const [draft, setDraft] = useState(emptyProfile);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingInjuryId, setDeletingInjuryId] = useState(null);
   const [error, setError] = useState("");
-  const [saveMessage, setSaveMessage] = useState("");
+  const [message, setMessage] = useState("");
+
+  const [showGoalForm, setShowGoalForm] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState("");
+  const [savingGoal, setSavingGoal] = useState(false);
+
+  const [showInjuryForm, setShowInjuryForm] = useState(false);
+  const [savingInjury, setSavingInjury] = useState(false);
+  const [injuryDraft, setInjuryDraft] = useState({
+    injuryName: "",
+    bodyRegion: "",
+    severity: "MODERATE",
+    recoveryStatus: "OPEN",
+  });
+
+  const loadProfile = async () => {
+    const response = await getProfile();
+    const saved = profileFromResponse(response);
+    setProfile(saved);
+    setDraft(saved);
+    return saved;
+  };
 
   useEffect(() => {
     let active = true;
@@ -233,16 +272,16 @@ export default function Profile() {
     (async () => {
       try {
         const response = await getProfile();
-        const actual = profileFromResponse(response);
-        if (active) {
-          setProfile(actual);
-          setDraft(actual);
-        }
+        if (!active) return;
+
+        const saved = profileFromResponse(response);
+        setProfile(saved);
+        setDraft(saved);
       } catch (err) {
         if (active) {
           setError(
             err.response?.data?.message ||
-              "Unable to load your profile. Check that the backend is running and try again.",
+              "Unable to load your profile. Check that the backend is running.",
           );
         }
       } finally {
@@ -255,22 +294,25 @@ export default function Profile() {
     };
   }, []);
 
+  const updateField = (event) => {
+    const { name, value } = event.target;
+    setDraft((previous) => ({ ...previous, [name]: value }));
+  };
+
+  const updateMultiSelect = (name, value) => {
+    setDraft((previous) => ({ ...previous, [name]: value }));
+  };
+
   const startEditing = () => {
     setDraft({ ...profile });
     setError("");
-    setSaveMessage("");
+    setMessage("");
     setEditing(true);
-  };
-
-  const updateDraft = (event) => {
-    const { name, value } = event.target;
-    setDraft((previous) => ({ ...previous, [name]: value }));
   };
 
   const cancelEditing = () => {
     setDraft({ ...profile });
     setError("");
-    setSaveMessage("");
     setEditing(false);
   };
 
@@ -278,41 +320,148 @@ export default function Profile() {
     event.preventDefault();
     setSaving(true);
     setError("");
-    setSaveMessage("");
+    setMessage("");
 
-    // dateOfBirth and category are excluded because the current backend schema
-    // does not persist those fields. Email is read-only on this page.
-    const durationMatch = String(draft.sessionDuration || "").match(/\d+/);
     const payload = {
-      fullName: draft.fullName,
+      fullName: draft.fullName.trim(),
       gender: draft.gender,
       height: draft.height,
       weight: draft.weight,
       fitnessLevel: draft.fitnessLevel,
       sport: draft.sport,
       competitionLevel: draft.competitionLevel,
-      goals: draft.primaryGoal ? [draft.primaryGoal] : [],
-      equipment: draft.equipment ? [draft.equipment] : [],
-      workoutType: draft.workoutType ? [draft.workoutType] : [],
+      equipment: draft.equipment,
+      workoutType: draft.workoutTypes,
+      targetArea: draft.targetAreas,
       difficulty: draft.difficulty,
-      targetArea: draft.targetArea ? [draft.targetArea] : [],
-      sessionDuration: durationMatch ? Number(durationMatch[0]) : "",
+      sessionDuration: draft.sessionDuration,
       workoutDescription: draft.workoutDescription,
     };
 
     try {
       await updateProfile(payload);
-      const response = await getProfile();
-      const savedProfile = profileFromResponse(response);
-
-      setProfile(savedProfile);
-      setDraft(savedProfile);
+      await loadProfile();
       setEditing(false);
-      setSaveMessage("Profile saved successfully.");
+      setMessage("Profile saved successfully.");
     } catch (err) {
       setError(err.response?.data?.message || "Unable to save your profile. Please try again.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAddGoal = async (event) => {
+    event.preventDefault();
+
+    if (!selectedGoal) {
+      setError("Please select a fitness goal.");
+      return;
+    }
+
+    if (profile.goals.includes(selectedGoal)) {
+      setError("This goal has already been added.");
+      return;
+    }
+
+    setSavingGoal(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await updateProfile({
+        goals: [...profile.goals, selectedGoal],
+      });
+
+      await loadProfile();
+      setSelectedGoal("");
+      setShowGoalForm(false);
+      setMessage("Fitness goal added successfully.");
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to add the fitness goal. Please try again.");
+    } finally {
+      setSavingGoal(false);
+    }
+  };
+
+  const removeGoal = async (goalToRemove) => {
+    const updatedGoals = profile.goals.filter((goal) => goal !== goalToRemove);
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await updateProfile({ goals: updatedGoals });
+      await loadProfile();
+      setMessage("Goal removed successfully.");
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to remove this goal.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddInjury = async (event) => {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+
+    if (!injuryDraft.injuryName.trim()) {
+      setError("Please enter the injury name.");
+      return;
+    }
+
+    setSavingInjury(true);
+
+    try {
+      await addInjury({
+        ...injuryDraft,
+        injuryName: injuryDraft.injuryName.trim(),
+        bodyRegion: injuryDraft.bodyRegion.trim(),
+      });
+
+      await loadProfile();
+
+      setInjuryDraft({
+        injuryName: "",
+        bodyRegion: "",
+        severity: "MODERATE",
+        recoveryStatus: "OPEN",
+      });
+
+      setShowInjuryForm(false);
+      setMessage("Injury added successfully.");
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to add the injury. Please try again.");
+    } finally {
+      setSavingInjury(false);
+    }
+  };
+
+  const removeInjury = async (injury) => {
+    if (!injury?.id) {
+      setError("This injury record has no ID and cannot be deleted.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete the injury record "${injury.injuryName}"? This cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    setDeletingInjuryId(injury.id);
+    setError("");
+    setMessage("");
+
+    try {
+      await deleteInjury(injury.id);
+      await loadProfile();
+      setMessage("Injury record deleted successfully.");
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to delete this injury record.");
+    } finally {
+      setDeletingInjuryId(null);
     }
   };
 
@@ -348,31 +497,31 @@ export default function Profile() {
 
   if (!profile) return null;
 
-  const completionKeys = [
-    "fullName",
-    "email",
-    "gender",
-    "height",
-    "weight",
-    "fitnessLevel",
-    "sport",
-    "competitionLevel",
-    "primaryGoal",
-    "equipment",
-    "targetArea",
-    "workoutType",
-    "difficulty",
-    "sessionDuration",
+  const completionFields = [
+    profile.fullName,
+    profile.email,
+    profile.gender,
+    profile.height,
+    profile.weight,
+    profile.fitnessLevel,
+    profile.sport,
+    profile.competitionLevel,
+    profile.goals.length,
+    profile.equipment.length,
+    profile.targetAreas.length,
+    profile.workoutTypes.length,
+    profile.difficulty,
+    profile.sessionDuration,
   ];
+
   const completion = Math.round(
-    (completionKeys.filter((key) => profile[key]).length / completionKeys.length) * 100,
+    (completionFields.filter(Boolean).length / completionFields.length) * 100,
   );
 
-  const displayFields = [
+  const personalFields = [
     ["Full name", profile.fullName],
     ["Email", profile.email],
     ["Gender", profile.gender],
-    ["Date of birth", profile.dateOfBirth],
     ["Height", profile.height ? `${profile.height} cm` : ""],
     ["Weight", profile.weight ? `${profile.weight} kg` : ""],
     ["Activity level", profile.fitnessLevel],
@@ -380,19 +529,14 @@ export default function Profile() {
     ["Competition level", profile.competitionLevel],
   ];
 
-  const workoutFields = [
-    ["Equipment", profile.equipment],
-    ["Workout goal / target", profile.primaryGoal],
-    ["Target body part", profile.targetArea],
-    ["Workout type", profile.workoutType],
+  const preferenceFields = [
     ["Difficulty", profile.difficulty],
-    ["Exercise category", profile.category],
-    ["Session duration", profile.sessionDuration],
+    ["Session duration", profile.sessionDuration ? `${profile.sessionDuration} minutes` : ""],
   ];
 
   return (
     <DashboardLayout name={profile.fullName}>
-      <div className='mx-auto w-full max-w-7xl space-y-6 pb-8'>
+      <div className='mx-auto w-full max-w-7xl space-y-5 pb-8'>
         <header className='flex flex-col justify-between gap-3 sm:flex-row sm:items-end'>
           <div>
             <p className='text-xs font-semibold uppercase tracking-[0.18em] text-blue-700'>
@@ -402,28 +546,30 @@ export default function Profile() {
               My Profile
             </h1>
             <p className='mt-2 max-w-2xl text-sm leading-6 text-slate-500'>
-              Manage your athlete details and workout preferences to personalize recommendations.
+              Manage your athlete details and workout preferences.
             </p>
           </div>
+
           {!editing && (
             <button
               onClick={startEditing}
-              className='inline-flex items-center justify-center gap-2 self-start rounded-xl bg-[#244C91] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 sm:self-auto'
+              className='inline-flex items-center justify-center gap-2 self-start rounded-xl bg-[#244C91] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800'
             >
               <Pencil size={16} /> Edit profile
             </button>
           )}
         </header>
 
-        {saveMessage && (
+        {message && (
           <p
             role='status'
             className='rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-800'
           >
-            {saveMessage}
+            {message}
           </p>
         )}
-        {error && profile && (
+
+        {error && (
           <p
             role='alert'
             className='rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700'
@@ -442,13 +588,13 @@ export default function Profile() {
             <div className='flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-white bg-blue-100 text-3xl font-bold text-[#193663] shadow-sm'>
               {profile.fullName ? profile.fullName[0].toUpperCase() : <UserRound size={32} />}
             </div>
+
             <div className='min-w-0 flex-1'>
               <h2 className='break-words text-xl font-bold text-[#193663] sm:text-2xl'>
                 {profile.fullName || "Athlete"}
               </h2>
               <p className='mt-1 flex items-center gap-2 break-all text-sm text-blue-800'>
-                <Mail size={15} />
-                {profile.email || "Email not added"}
+                <Mail size={15} /> {profile.email || "Email not added"}
               </p>
               <div className='mt-3 flex flex-wrap gap-2'>
                 {[profile.sport, profile.fitnessLevel, profile.competitionLevel]
@@ -463,6 +609,7 @@ export default function Profile() {
                   ))}
               </div>
             </div>
+
             <div className='relative z-10 w-full rounded-xl border border-white/80 bg-white/75 p-4 sm:max-w-48'>
               <div className='flex items-center justify-between gap-2'>
                 <span className='text-xs font-semibold text-slate-600'>Profile completion</span>
@@ -474,7 +621,6 @@ export default function Profile() {
                   style={{ width: `${completion}%` }}
                 />
               </div>
-              <p className='mt-2 text-xs text-slate-500'>Add your workout preferences.</p>
             </div>
           </div>
         </section>
@@ -487,7 +633,7 @@ export default function Profile() {
             <div>
               <h2 className='text-lg font-bold text-[#193663]'>Edit athlete profile</h2>
               <p className='mt-1 text-sm text-slate-500'>
-                Choose your personal details and preferred workout filters.
+                Update your personal details and workout preferences.
               </p>
             </div>
 
@@ -496,58 +642,124 @@ export default function Profile() {
                 Personal and athletic details
               </h3>
               <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-3'>
-                {fields.slice(0, 9).map(([field, label, type]) => (
-                  <ProfileInput
-                    key={field}
-                    field={field}
-                    label={label}
-                    type={type}
-                    value={draft[field]}
-                    onChange={updateDraft}
-                    options={choices[field]}
+                <Field
+                  label='Full name'
+                  name='fullName'
+                  value={draft.fullName}
+                  onChange={updateField}
+                />
+                <label className='block min-w-0'>
+                  <span className='text-sm font-medium text-slate-700'>Email address</span>
+                  <input
+                    value={draft.email}
+                    readOnly
+                    className={`${inputClass} bg-slate-50 text-slate-500`}
                   />
-                ))}
+                </label>
+                <Field
+                  label='Gender'
+                  name='gender'
+                  value={draft.gender}
+                  onChange={updateField}
+                  options={choices.gender}
+                />
+                <Field
+                  label='Height (cm)'
+                  name='height'
+                  value={draft.height}
+                  onChange={updateField}
+                  type='number'
+                />
+                <Field
+                  label='Weight (kg)'
+                  name='weight'
+                  value={draft.weight}
+                  onChange={updateField}
+                  type='number'
+                />
+                <Field
+                  label='Sport'
+                  name='sport'
+                  value={draft.sport}
+                  onChange={updateField}
+                  options={choices.sport}
+                />
+                <Field
+                  label='Activity / fitness level'
+                  name='fitnessLevel'
+                  value={draft.fitnessLevel}
+                  onChange={updateField}
+                  options={choices.fitnessLevel}
+                />
+                <Field
+                  label='Competition level'
+                  name='competitionLevel'
+                  value={draft.competitionLevel}
+                  onChange={updateField}
+                  options={choices.competitionLevel}
+                />
               </div>
             </div>
 
-            <div className='border-t border-slate-100 pt-5'>
+            <div className='space-y-5 border-t border-slate-100 pt-5'>
               <h3 className='text-sm font-bold text-[#193663]'>
                 Workout recommendation preferences
               </h3>
-              <p className='mb-4 mt-1 text-sm text-slate-500'>
-                These preferences provide default values for personalized workout recommendations.
-              </p>
-              <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-3'>
-                {fields.slice(9).map(([field, label, type]) => (
-                  <ProfileInput
-                    key={field}
-                    field={field}
-                    label={label}
-                    type={type}
-                    value={draft[field]}
-                    onChange={updateDraft}
-                    options={choices[field]}
-                  />
-                ))}
-                <label className='block sm:col-span-2 xl:col-span-3'>
-                  <span className='text-sm font-medium text-slate-700'>
-                    Additional preferences (optional)
-                  </span>
-                  <textarea
-                    name='workoutDescription'
-                    rows={3}
-                    value={draft.workoutDescription ?? ""}
-                    onChange={updateDraft}
-                    placeholder='For example: focus on stamina, avoid jumping exercises...'
-                    className='mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50'
-                  />
-                </label>
+
+              <MultiSelect
+                label='Equipment available'
+                name='equipment'
+                options={choices.equipment}
+                selected={draft.equipment}
+                onChange={updateMultiSelect}
+              />
+
+              <MultiSelect
+                label='Workout types'
+                name='workoutTypes'
+                options={choices.workoutTypes}
+                selected={draft.workoutTypes}
+                onChange={updateMultiSelect}
+              />
+
+              <MultiSelect
+                label='Target body areas'
+                name='targetAreas'
+                options={choices.targetAreas}
+                selected={draft.targetAreas}
+                onChange={updateMultiSelect}
+              />
+
+              <div className='grid gap-4 sm:grid-cols-2'>
+                <Field
+                  label='Difficulty'
+                  name='difficulty'
+                  value={draft.difficulty}
+                  onChange={updateField}
+                  options={choices.difficulty}
+                />
+                <Field
+                  label='Session duration (minutes)'
+                  name='sessionDuration'
+                  value={draft.sessionDuration}
+                  onChange={updateField}
+                  options={choices.sessionDuration.map(String)}
+                />
               </div>
-              <p className='mt-3 text-xs leading-5 text-slate-500'>
-                Date of birth and exercise category are displayed for layout compatibility, but are
-                not saved because they are not currently included in the backend profile schema.
-                Email is read-only.
-              </p>
+
+              <label className='block'>
+                <span className='text-sm font-medium text-slate-700'>
+                  Additional preferences (optional)
+                </span>
+                <textarea
+                  name='workoutDescription'
+                  rows={3}
+                  value={draft.workoutDescription}
+                  onChange={updateField}
+                  placeholder='For example: focus on stamina, avoid jumping exercises...'
+                  className={inputClass}
+                />
+              </label>
             </div>
 
             <div className='flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end'>
@@ -555,14 +767,14 @@ export default function Profile() {
                 type='button'
                 onClick={cancelEditing}
                 disabled={saving}
-                className='rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60'
+                className='rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60'
               >
                 Cancel
               </button>
               <button
                 type='submit'
                 disabled={saving}
-                className='rounded-xl bg-[#244C91] px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60'
+                className='rounded-xl bg-[#244C91] px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60'
               >
                 {saving ? "Saving..." : "Save changes"}
               </button>
@@ -570,13 +782,15 @@ export default function Profile() {
           </form>
         )}
 
-        <div className='grid items-start gap-5 xl:grid-cols-2'>
+        {/* Top row: personal details and workout preferences */}
+        <div className='grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:gap-5'>
           <Section
             icon={UserRound}
             title='Personal & Athletic Details'
             subtitle='Core information attached to your athlete profile.'
             action={
               <button
+                type='button'
                 onClick={startEditing}
                 className='text-xs font-semibold text-blue-700 hover:underline'
               >
@@ -585,7 +799,7 @@ export default function Profile() {
             }
           >
             <div className='grid gap-x-6 sm:grid-cols-2'>
-              {displayFields.map(([label, value]) => (
+              {personalFields.map(([label, value]) => (
                 <div key={label} className='min-w-0 border-b border-slate-100 py-3'>
                   <p className='text-xs font-medium uppercase tracking-wide text-slate-500'>
                     {label}
@@ -601,9 +815,10 @@ export default function Profile() {
           <Section
             icon={Settings2}
             title='Workout Preferences'
-            subtitle='Settings to guide personalized workout recommendations.'
+            subtitle='Settings that guide personalized workout recommendations.'
             action={
               <button
+                type='button'
                 onClick={startEditing}
                 className='text-xs font-semibold text-blue-700 hover:underline'
               >
@@ -611,35 +826,116 @@ export default function Profile() {
               </button>
             }
           >
-            <div className='grid gap-3 sm:grid-cols-2'>
-              {workoutFields.map(([label, value]) => (
-                <div key={label} className='min-w-0 rounded-xl bg-[#F1F6FD] p-3.5'>
+            <div className='space-y-4'>
+              {[
+                ["Equipment", profile.equipment],
+                ["Workout types", profile.workoutTypes],
+                ["Target areas", profile.targetAreas],
+              ].map(([label, values]) => (
+                <div key={label}>
                   <p className='text-xs font-medium text-slate-500'>{label}</p>
-                  <p className='mt-1 break-words text-sm font-semibold text-[#193663]'>
-                    {value || "Not set"}
-                  </p>
+                  <div className='mt-2 flex flex-wrap gap-2'>
+                    {values.length ? (
+                      values.map((value) => (
+                        <span
+                          key={value}
+                          className='rounded-full bg-blue-50 px-3 py-1.5 text-sm font-medium text-[#244C91]'
+                        >
+                          {value}
+                        </span>
+                      ))
+                    ) : (
+                      <span className='text-sm text-slate-500'>Not set</span>
+                    )}
+                  </div>
                 </div>
               ))}
-            </div>
-            {profile.workoutDescription && (
-              <p className='mt-3 rounded-xl border border-blue-100 p-3.5 text-sm text-slate-700'>
-                {profile.workoutDescription}
-              </p>
-            )}
-            <a
-              href='/recommendations'
-              className='mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline'
-            >
-              Explore recommendations <ArrowRight size={16} />
-            </a>
-          </Section>
 
+              <div className='grid gap-3 sm:grid-cols-2'>
+                {preferenceFields.map(([label, value]) => (
+                  <div key={label} className='rounded-xl bg-[#F1F6FD] p-3.5'>
+                    <p className='text-xs font-medium text-slate-500'>{label}</p>
+                    <p className='mt-1 break-words text-sm font-semibold text-[#193663]'>
+                      {value || "Not set"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {profile.workoutDescription && (
+                <p className='rounded-xl border border-blue-100 p-3.5 text-sm text-slate-700'>
+                  {profile.workoutDescription}
+                </p>
+              )}
+
+              <a
+                href='/recommendations'
+                className='inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline'
+              >
+                Explore recommendations <ArrowRight size={16} />
+              </a>
+            </div>
+          </Section>
+        </div>
+
+        {/* Bottom row: goals and injuries */}
+        <div className='grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:gap-5'>
           <Section
             icon={Target}
             title='Fitness Goals'
-            subtitle='Goals returned by your saved profile.'
+            subtitle='Add or remove goals without changing other preferences.'
+            action={
+              <button
+                type='button'
+                onClick={() => {
+                  setShowGoalForm((previous) => !previous);
+                  setError("");
+                  setMessage("");
+                }}
+                className='inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#244C91] px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-800'
+              >
+                {showGoalForm ? <X size={15} /> : <Plus size={15} />}
+                {showGoalForm ? "Cancel" : "Add Goal"}
+              </button>
+            }
           >
-            {profile.goals.length ? (
+            {showGoalForm && (
+              <form
+                onSubmit={handleAddGoal}
+                className='mb-4 space-y-4 rounded-xl border border-blue-100 bg-[#F8FAFE] p-4'
+              >
+                <h3 className='text-sm font-bold text-[#193663]'>Add fitness goal</h3>
+
+                <label className='block'>
+                  <span className='text-sm font-medium text-slate-700'>Select goal *</span>
+                  <select
+                    value={selectedGoal}
+                    onChange={(event) => setSelectedGoal(event.target.value)}
+                    className={inputClass}
+                    required
+                  >
+                    <option value=''>Select a fitness goal</option>
+                    {choices.goals
+                      .filter((goal) => !profile.goals.includes(goal))
+                      .map((goal) => (
+                        <option key={goal} value={goal}>
+                          {goal}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <button
+                  type='submit'
+                  disabled={savingGoal}
+                  className='w-full rounded-xl bg-[#244C91] px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60'
+                >
+                  {savingGoal ? "Saving goal..." : "Save Goal"}
+                </button>
+              </form>
+            )}
+
+            {profile.goals.length > 0 ? (
               <div className='flex flex-wrap gap-2'>
                 {profile.goals.map((goal) => (
                   <span
@@ -648,56 +944,186 @@ export default function Profile() {
                   >
                     <CheckCircle2 size={15} />
                     {goal}
+                    <button
+                      type='button'
+                      title={`Remove ${goal}`}
+                      disabled={saving}
+                      onClick={() => removeGoal(goal)}
+                      className='rounded-full p-0.5 hover:bg-blue-100 disabled:opacity-50'
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </span>
                 ))}
               </div>
             ) : (
-              <div className='rounded-xl bg-[#F8FAFE] p-4'>
-                <p className='text-sm font-medium text-slate-700'>
-                  {profile.primaryGoal || "No saved goals returned"}
-                </p>
-                <p className='mt-1 text-xs leading-5 text-slate-500'>
-                  Choose a workout goal in Edit profile to save it to your athlete profile.
-                </p>
-              </div>
+              <p className='rounded-xl bg-[#F8FAFE] p-4 text-sm text-slate-500'>
+                No goals saved yet. Select Add Goal to add your first goal.
+              </p>
             )}
           </Section>
 
           <Section
             icon={HeartPulse}
             title='Injury History'
-            subtitle='Review injury information returned by your profile.'
+            subtitle='Record injuries to help personalize your workout preferences.'
+            action={
+              <button
+                type='button'
+                onClick={() => setShowInjuryForm((previous) => !previous)}
+                className='inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#244C91] px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-800'
+              >
+                {showInjuryForm ? <X size={15} /> : <Plus size={15} />}
+                {showInjuryForm ? "Cancel" : "Add Injury"}
+              </button>
+            }
           >
-            {profile.injuries.length ? (
+            {showInjuryForm && (
+              <form
+                onSubmit={handleAddInjury}
+                className='mb-5 space-y-4 rounded-xl border border-blue-100 bg-[#F8FAFE] p-4'
+              >
+                <h3 className='font-semibold text-[#193663]'>Add injury details</h3>
+
+                <label className='block'>
+                  <span className='text-sm font-medium text-slate-700'>Injury name *</span>
+                  <input
+                    required
+                    value={injuryDraft.injuryName}
+                    onChange={(event) =>
+                      setInjuryDraft((previous) => ({
+                        ...previous,
+                        injuryName: event.target.value,
+                      }))
+                    }
+                    placeholder='e.g. Knee injury'
+                    className={inputClass}
+                  />
+                </label>
+
+                <label className='block'>
+                  <span className='text-sm font-medium text-slate-700'>Body region</span>
+                  <select
+                    value={injuryDraft.bodyRegion}
+                    onChange={(event) =>
+                      setInjuryDraft((previous) => ({
+                        ...previous,
+                        bodyRegion: event.target.value,
+                      }))
+                    }
+                    className={inputClass}
+                  >
+                    <option value=''>Select body region</option>
+                    {[
+                      "Head",
+                      "Neck",
+                      "Shoulder",
+                      "Arm",
+                      "Elbow",
+                      "Wrist",
+                      "Back",
+                      "Chest",
+                      "Hip",
+                      "Knee",
+                      "Leg",
+                      "Ankle",
+                      "Foot",
+                      "Other",
+                    ].map((region) => (
+                      <option key={region} value={region}>
+                        {region}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className='block'>
+                  <span className='text-sm font-medium text-slate-700'>Severity</span>
+                  <select
+                    value={injuryDraft.severity}
+                    onChange={(event) =>
+                      setInjuryDraft((previous) => ({
+                        ...previous,
+                        severity: event.target.value,
+                      }))
+                    }
+                    className={inputClass}
+                  >
+                    <option value='MILD'>Mild</option>
+                    <option value='MODERATE'>Moderate</option>
+                    <option value='SEVERE'>Severe</option>
+                  </select>
+                </label>
+
+                <label className='block'>
+                  <span className='text-sm font-medium text-slate-700'>Recovery status</span>
+                  <select
+                    value={injuryDraft.recoveryStatus}
+                    onChange={(event) =>
+                      setInjuryDraft((previous) => ({
+                        ...previous,
+                        recoveryStatus: event.target.value,
+                      }))
+                    }
+                    className={inputClass}
+                  >
+                    <option value='OPEN'>Ongoing</option>
+                    <option value='RECOVERING'>Recovering</option>
+                    <option value='RECOVERED'>Recovered</option>
+                  </select>
+                </label>
+
+                <button
+                  type='submit'
+                  disabled={savingInjury}
+                  className='w-full rounded-xl bg-[#244C91] px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60'
+                >
+                  {savingInjury ? "Adding injury..." : "Save injury"}
+                </button>
+              </form>
+            )}
+
+            {profile.injuries.length > 0 ? (
               <div className='space-y-3'>
                 {profile.injuries.map((injury, index) => (
                   <div
                     key={injury.id || `${injury.injuryName}-${index}`}
-                    className='rounded-xl bg-[#F8FAFE] p-4'
+                    className='flex items-start justify-between gap-3 rounded-xl bg-[#F8FAFE] p-4'
                   >
-                    <p className='font-semibold text-[#193663]'>
-                      {injury.injuryName || "Injury record"}
-                    </p>
-                    <p className='mt-1 text-sm text-slate-600'>
-                      {injury.bodyRegion || "Body region not specified"}
-                      {injury.severity ? ` · ${injury.severity}` : ""}
-                    </p>
-                    {injury.recoveryStatus && (
-                      <p className='mt-1 text-xs text-slate-500'>
-                        Recovery status: {injury.recoveryStatus}
+                    <div className='min-w-0'>
+                      <p className='font-semibold text-[#193663]'>
+                        {injury.injuryName || "Injury record"}
                       </p>
-                    )}
+                      <p className='mt-1 text-sm text-slate-600'>
+                        {injury.bodyRegion || "Region not specified"}
+                        {injury.severity ? ` · ${injury.severity}` : ""}
+                      </p>
+                      <p className='mt-1 text-xs text-slate-500'>
+                        Status: {injury.recoveryStatus || "OPEN"}
+                      </p>
+                    </div>
+
+                    <button
+                      type='button'
+                      onClick={() => removeInjury(injury)}
+                      disabled={deletingInjuryId === injury.id}
+                      title='Delete injury'
+                      className='rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:opacity-50'
+                    >
+                      <Trash2 size={17} />
+                    </button>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className='rounded-xl bg-[#F8FAFE] p-4 text-sm leading-6 text-slate-500'>
-                No injury records were returned by your profile API.
+              <p className='rounded-xl bg-[#F8FAFE] p-4 text-sm text-slate-500'>
+                No injury records yet. Select Add Injury to record one.
               </p>
             )}
+
             <p className='mt-3 text-xs leading-5 text-slate-500'>
-              Recommendations are not medical clearance. Seek qualified advice before exercising
-              with an injury or ongoing pain.
+              Injury records help inform workout preferences; they are not a substitute for
+              professional medical advice.
             </p>
           </Section>
         </div>

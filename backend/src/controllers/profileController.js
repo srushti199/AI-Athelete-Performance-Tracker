@@ -321,3 +321,53 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+// DELETE /api/profile/injuries/:injuryId
+exports.deleteInjury = catchAsync(async (req, res, next) => {
+  const { injuryId } = req.params;
+
+  if (!injuryId) {
+    return next(new AppError("Injury ID is required.", 400));
+  }
+
+  // Find the logged-in athlete's profile.
+  const athlete = await prisma.AthleteProfile.findUnique({
+    where: {
+      userId: req.user.id,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!athlete) {
+    return next(new AppError("Athlete profile not found.", 404));
+  }
+
+  // Restrict deletion to an injury belonging to this athlete.
+  const injury = await prisma.Injury.findFirst({
+    where: {
+      id: injuryId,
+      athleteId: athlete.id,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!injury) {
+    return next(new AppError("Injury record not found.", 404));
+  }
+
+  await prisma.Injury.delete({
+    where: {
+      id: injury.id,
+    },
+  });
+
+  return res.status(200).json({
+    status: "success",
+    message: "Injury record deleted successfully.",
+    data: null,
+  });
+});
