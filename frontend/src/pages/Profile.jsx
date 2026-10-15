@@ -1,460 +1,716 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  Activity,
-  Dumbbell,
-  Sparkles,
-  ChartNoAxesColumn,
-  UserRound,
+  ArrowRight,
+  CheckCircle2,
+  HeartPulse,
+  Mail,
   Mountain,
   Pencil,
-  CalendarDays,
-  Mail,
-  VenusAndMars,
-  Ruler,
-  Weight,
+  Settings2,
   Target,
   Trophy,
-  Flame,
-  Clock3,
-  Star,
-  CircleCheck,
-  Settings,
-  Lightbulb,
-  ArrowRight,
+  UserRound,
 } from "lucide-react";
-
 import DashboardLayout from "../components/dashboard/layout/DashboardLayout";
+import { getProfile, updateProfile } from "../api/profileApi";
 
-const initialProfile = {
-  fullName: "Athlete",
-  email: "athlete@example.com",
-  gender: "Not added",
+const emptyProfile = {
+  fullName: "",
+  email: "",
+  gender: "",
   dateOfBirth: "",
   height: "",
   weight: "",
-  fitnessLevel: "Beginner",
-  primaryGoal: "Build muscle",
-  sport: "General Fitness",
-  equipment: "Body weight",
-  workoutType: "Strength",
-  difficulty: "Beginner",
-  targetArea: "Full body",
-  sessionDuration: "30–45 min",
+  fitnessLevel: "",
+  primaryGoal: "",
+  sport: "",
+  competitionLevel: "",
+  equipment: "",
+  workoutType: "",
+  difficulty: "",
+  targetArea: "",
+  sessionDuration: "",
+  category: "",
+  workoutDescription: "",
+  goals: [],
+  injuries: [],
 };
 
-function SectionTitle({ icon: Icon, title, action }) {
+const choices = {
+  gender: ["Female", "Male", "Other", "Prefer not to say"],
+  fitnessLevel: ["Beginner", "Intermediate", "Advanced"],
+  primaryGoal: [
+    "Muscle gain",
+    "Strength",
+    "Weight loss",
+    "Improve endurance",
+    "Improve flexibility",
+    "General fitness",
+    "Sports performance",
+  ],
+  sport: [
+    "General Fitness",
+    "Cricket",
+    "Football",
+    "Basketball",
+    "Badminton",
+    "Running",
+    "Swimming",
+    "Athletics",
+    "Other",
+  ],
+  competitionLevel: ["Recreational", "Amateur", "Competitive", "Professional"],
+  equipment: [
+    "Body weight",
+    "Dumbbells",
+    "Barbell",
+    "Resistance bands",
+    "Kettlebell",
+    "Cable machine",
+    "Full gym",
+    "Other",
+  ],
+  workoutType: ["Strength", "Cardio", "Flexibility", "Mobility", "Plyometrics", "Sports-specific"],
+  difficulty: ["Beginner", "Intermediate", "Advanced"],
+  targetArea: [
+    "Full body",
+    "Chest",
+    "Back",
+    "Shoulders",
+    "Arms",
+    "Legs",
+    "Core",
+    "Glutes",
+    "Cardiovascular endurance",
+  ],
+  category: [
+    "Strength",
+    "Cardio",
+    "Stretching",
+    "Plyometrics",
+    "Powerlifting",
+    "Strongman",
+    "Olympic weightlifting",
+    "Other",
+  ],
+  sessionDuration: ["15 minutes", "30 minutes", "45 minutes", "60 minutes", "90 minutes"],
+};
+
+const fields = [
+  ["fullName", "Full name", "text"],
+  ["email", "Email address", "email"],
+  ["gender", "Gender"],
+  ["dateOfBirth", "Date of birth", "date"],
+  ["height", "Height (cm)", "number"],
+  ["weight", "Weight (kg)", "number"],
+  ["sport", "Sport"],
+  ["fitnessLevel", "Activity / fitness level"],
+  ["competitionLevel", "Competition level"],
+  ["equipment", "Equipment available"],
+  ["primaryGoal", "Workout goal / target"],
+  ["targetArea", "Target body part"],
+  ["workoutType", "Workout type"],
+  ["difficulty", "Difficulty"],
+  ["category", "Exercise category"],
+  ["sessionDuration", "Session duration"],
+];
+
+function Section({ icon: Icon, title, subtitle, children, action }) {
   return (
-    <div className='mb-4 flex items-center justify-between gap-3'>
-      <div className='flex items-center gap-3'>
-        <span className='flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-700'>
-          <Icon size={20} />
-        </span>
-        <h2 className='font-bold text-[#193663]'>{title}</h2>
+    <section className='min-w-0 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6'>
+      <div className='mb-5 flex items-start justify-between gap-3'>
+        <div className='flex min-w-0 items-start gap-3'>
+          <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700'>
+            <Icon size={20} />
+          </span>
+          <div>
+            <h2 className='font-bold text-[#193663]'>{title}</h2>
+            <p className='mt-1 text-sm leading-5 text-slate-500'>{subtitle}</p>
+          </div>
+        </div>
+        {action}
       </div>
-
-      {action}
-    </div>
+      {children}
+    </section>
   );
 }
 
-function EditButton({ onClick, label = "Edit" }) {
+function ProfileInput({ field, label, value, onChange, type = "text", options }) {
+  const className =
+    "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50";
+
   return (
-    <button
-      type='button'
-      onClick={onClick}
-      className='inline-flex items-center gap-1.5 rounded-full border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50'
-    >
-      <Pencil size={13} />
-      {label}
-    </button>
-  );
-}
-
-function InfoRow({ icon: Icon, label, value, onAdd }) {
-  return (
-    <div className='grid grid-cols-[30px_minmax(95px,0.8fr)_minmax(0,1fr)_auto] items-center gap-2 py-2'>
-      <span className='flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-[#315D9E]'>
-        <Icon size={16} />
-      </span>
-
-      <span className='text-xs text-slate-500 sm:text-sm'>{label}</span>
-
-      <span className='break-words text-xs font-medium text-slate-700 sm:text-sm'>
-        {value || "Not added"}
-      </span>
-
-      {onAdd && (
-        <button
-          type='button'
-          onClick={onAdd}
-          className='rounded-full border border-blue-200 px-3 py-1 text-xs text-blue-700 hover:bg-blue-50'
+    <label className='block min-w-0'>
+      <span className='text-sm font-medium text-slate-700'>{label}</span>
+      {options ? (
+        <select
+          name={field}
+          value={value ?? ""}
+          onChange={onChange}
+          className={className}
+          disabled={field === "email"}
         >
-          Add
-        </button>
+          <option value=''>Select {label.toLowerCase()}</option>
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          name={field}
+          type={type}
+          min={type === "number" ? "0" : undefined}
+          step={type === "number" ? "any" : undefined}
+          value={value ?? ""}
+          onChange={onChange}
+          readOnly={field === "email"}
+          className={`${className} ${field === "email" ? "bg-slate-50 text-slate-500" : ""}`}
+        />
       )}
-    </div>
+    </label>
   );
 }
 
-function StatTile({ icon: Icon, label, value, helper }) {
-  return (
-    <div className='rounded-xl bg-[#F1F6FD] p-3 sm:p-4'>
-      <Icon size={22} className='mb-2 text-blue-700' />
-      <p className='text-xs text-slate-500'>{label}</p>
-      <p className='mt-1 text-xl font-bold text-[#193663]'>{value}</p>
-      <p className='mt-1 text-[11px] text-slate-500'>{helper}</p>
-    </div>
-  );
+function normalizeGender(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase();
+  if (normalized === "MALE") return "Male";
+  if (normalized === "FEMALE") return "Female";
+  if (normalized === "OTHER") return "Other";
+  return value || "";
+}
+
+function profileFromResponse(response) {
+  const data = response?.data?.data ?? response?.data ?? {};
+  const user = data.user ?? {};
+  const athlete = data.profile ?? data.athleteProfile ?? {};
+  const preference = athlete.workoutPreference ?? {};
+  const goals = Array.isArray(athlete.profileGoals)
+    ? athlete.profileGoals.map((goal) => goal.goalKey).filter(Boolean)
+    : [];
+
+  return {
+    ...emptyProfile,
+    fullName: [user.firstName, user.lastName].filter(Boolean).join(" "),
+    email: user.email || "",
+    gender: normalizeGender(athlete.gender),
+    // dateOfBirth and category are not currently stored by the Prisma schema.
+    dateOfBirth: athlete.dateOfBirth ? String(athlete.dateOfBirth).slice(0, 10) : "",
+    height: athlete.heightCm ?? "",
+    weight: athlete.weightKg ?? "",
+    fitnessLevel: athlete.activityLevel || "",
+    sport: athlete.sport || "",
+    competitionLevel: athlete.competitionLevel || "",
+    primaryGoal: goals[0] || "",
+    goals,
+    injuries: Array.isArray(athlete.injuries) ? athlete.injuries : [],
+    equipment: preference.equipment?.[0]?.equipment || "",
+    workoutType: preference.workoutTypes?.[0]?.workoutType || "",
+    difficulty: preference.difficulty || "",
+    targetArea: preference.targetAreas?.[0]?.targetArea || "",
+    sessionDuration:
+      preference.sessionDuration == null ? "" : `${preference.sessionDuration} minutes`,
+    category: athlete.category || "",
+    workoutDescription: preference.workoutDescription || "",
+  };
 }
 
 export default function Profile() {
-  const [profile, setProfile] = useState(initialProfile);
+  const [profile, setProfile] = useState(null);
+  const [draft, setDraft] = useState({});
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(initialProfile);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
 
-  const updateDraft = (field, value) => {
-    setDraft((previous) => ({ ...previous, [field]: value }));
-  };
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      try {
+        const response = await getProfile();
+        const actual = profileFromResponse(response);
+        if (active) {
+          setProfile(actual);
+          setDraft(actual);
+        }
+      } catch (err) {
+        if (active) {
+          setError(
+            err.response?.data?.message ||
+              "Unable to load your profile. Check that the backend is running and try again.",
+          );
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const startEditing = () => {
-    setDraft(profile);
+    setDraft({ ...profile });
+    setError("");
+    setSaveMessage("");
     setEditing(true);
   };
 
-  const saveProfile = (event) => {
-    event.preventDefault();
-    setProfile(draft);
-    setEditing(false);
+  const updateDraft = (event) => {
+    const { name, value } = event.target;
+    setDraft((previous) => ({ ...previous, [name]: value }));
   };
 
   const cancelEditing = () => {
-    setDraft(profile);
+    setDraft({ ...profile });
+    setError("");
+    setSaveMessage("");
     setEditing(false);
   };
 
-  const goals = ["Improve endurance", "Increase strength"];
+  const saveProfile = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setSaveMessage("");
+
+    // dateOfBirth and category are excluded because the current backend schema
+    // does not persist those fields. Email is read-only on this page.
+    const durationMatch = String(draft.sessionDuration || "").match(/\d+/);
+    const payload = {
+      fullName: draft.fullName,
+      gender: draft.gender,
+      height: draft.height,
+      weight: draft.weight,
+      fitnessLevel: draft.fitnessLevel,
+      sport: draft.sport,
+      competitionLevel: draft.competitionLevel,
+      goals: draft.primaryGoal ? [draft.primaryGoal] : [],
+      equipment: draft.equipment ? [draft.equipment] : [],
+      workoutType: draft.workoutType ? [draft.workoutType] : [],
+      difficulty: draft.difficulty,
+      targetArea: draft.targetArea ? [draft.targetArea] : [],
+      sessionDuration: durationMatch ? Number(durationMatch[0]) : "",
+      workoutDescription: draft.workoutDescription,
+    };
+
+    try {
+      await updateProfile(payload);
+      const response = await getProfile();
+      const savedProfile = profileFromResponse(response);
+
+      setProfile(savedProfile);
+      setDraft(savedProfile);
+      setEditing(false);
+      setSaveMessage("Profile saved successfully.");
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to save your profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className='flex min-h-64 items-center justify-center'>
+          <div className='text-center'>
+            <div className='mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600' />
+            <p className='mt-4 text-sm text-slate-500'>Loading your profile...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error && !profile) {
+    return (
+      <DashboardLayout>
+        <div className='rounded-2xl border border-red-100 bg-white p-6'>
+          <h2 className='font-bold text-[#193663]'>Unable to load profile</h2>
+          <p className='mt-2 text-sm text-slate-500'>{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className='mt-4 rounded-xl bg-[#244C91] px-4 py-2 text-sm font-semibold text-white'
+          >
+            Try again
+          </button>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!profile) return null;
+
+  const completionKeys = [
+    "fullName",
+    "email",
+    "gender",
+    "height",
+    "weight",
+    "fitnessLevel",
+    "sport",
+    "competitionLevel",
+    "primaryGoal",
+    "equipment",
+    "targetArea",
+    "workoutType",
+    "difficulty",
+    "sessionDuration",
+  ];
+  const completion = Math.round(
+    (completionKeys.filter((key) => profile[key]).length / completionKeys.length) * 100,
+  );
+
+  const displayFields = [
+    ["Full name", profile.fullName],
+    ["Email", profile.email],
+    ["Gender", profile.gender],
+    ["Date of birth", profile.dateOfBirth],
+    ["Height", profile.height ? `${profile.height} cm` : ""],
+    ["Weight", profile.weight ? `${profile.weight} kg` : ""],
+    ["Activity level", profile.fitnessLevel],
+    ["Sport", profile.sport],
+    ["Competition level", profile.competitionLevel],
+  ];
+
+  const workoutFields = [
+    ["Equipment", profile.equipment],
+    ["Workout goal / target", profile.primaryGoal],
+    ["Target body part", profile.targetArea],
+    ["Workout type", profile.workoutType],
+    ["Difficulty", profile.difficulty],
+    ["Exercise category", profile.category],
+    ["Session duration", profile.sessionDuration],
+  ];
 
   return (
     <DashboardLayout name={profile.fullName}>
-      <div className='space-y-5'>
-        {/* Page heading */}
-        <section>
-          <h1 className='text-2xl font-bold text-[#193663]'>Profile</h1>
-          <p className='mt-1 text-sm text-slate-500'>
-            Manage your information, track your journey, and stay on top of your goals.
-          </p>
-        </section>
-
-        {/* Profile banner */}
-        <section className='relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-r from-[#E7F0FF] via-[#F2F7FF] to-[#DCEBFF] p-6 sm:p-7'>
-          <div className='relative z-10 flex flex-wrap items-center gap-5'>
-            <div className='relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-white bg-blue-100 text-5xl font-semibold text-[#193663]'>
-              {profile.fullName.charAt(0).toUpperCase() || "A"}
-              <button
-                type='button'
-                onClick={startEditing}
-                aria-label='Edit profile'
-                className='absolute bottom-0 right-0 rounded-full bg-[#193663] p-2 text-white hover:bg-blue-800'
-              >
-                <Pencil size={13} />
-              </button>
-            </div>
-
-            <div className='min-w-0'>
-              <h2 className='text-2xl font-bold text-[#193663]'>{profile.fullName || "Athlete"}</h2>
-              <p className='mt-1 break-all text-sm text-blue-700'>{profile.email}</p>
-
-              <div className='mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-600 sm:text-sm'>
-                <span className='inline-flex items-center gap-2'>
-                  <UserRound size={16} />
-                  {profile.gender}
-                </span>
-                <span className='inline-flex items-center gap-2'>
-                  <CalendarDays size={16} />
-                  AthliX Athlete
-                </span>
-              </div>
-
-              <button
-                type='button'
-                onClick={startEditing}
-                className='mt-4 inline-flex items-center gap-2 rounded-full border border-blue-300 bg-white/70 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-white'
-              >
-                <Pencil size={15} /> Edit Profile
-              </button>
-            </div>
-
-            <div className='ml-auto hidden max-w-xs pr-2 lg:block'>
-              <p className='text-sm leading-6 text-blue-800'>
-                “Discipline today builds the strength you'll thank yourself for tomorrow.”
-              </p>
-              <div className='mt-3 h-0.5 w-10 rounded-full bg-blue-400' />
-            </div>
-
-            <Mountain
-              size={125}
-              strokeWidth={0.8}
-              className='pointer-events-none absolute -bottom-9 right-5 hidden text-blue-300/60 lg:block'
-            />
+      <div className='mx-auto w-full max-w-7xl space-y-6 pb-8'>
+        <header className='flex flex-col justify-between gap-3 sm:flex-row sm:items-end'>
+          <div>
+            <p className='text-xs font-semibold uppercase tracking-[0.18em] text-blue-700'>
+              AthliX / Athlete space
+            </p>
+            <h1 className='mt-2 text-2xl font-bold tracking-tight text-[#193663] sm:text-3xl'>
+              My Profile
+            </h1>
+            <p className='mt-2 max-w-2xl text-sm leading-6 text-slate-500'>
+              Manage your athlete details and workout preferences to personalize recommendations.
+            </p>
           </div>
-        </section>
+          {!editing && (
+            <button
+              onClick={startEditing}
+              className='inline-flex items-center justify-center gap-2 self-start rounded-xl bg-[#244C91] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 sm:self-auto'
+            >
+              <Pencil size={16} /> Edit profile
+            </button>
+          )}
+        </header>
 
-        {/* Profile editor */}
-        {editing && (
-          <section className='rounded-2xl border border-blue-200 bg-white p-5 shadow-sm'>
-            <h2 className='mb-4 text-lg font-bold text-[#193663]'>Edit personal information</h2>
-
-            <form onSubmit={saveProfile} className='grid gap-4 sm:grid-cols-2'>
-              {[
-                ["fullName", "Full name", "text"],
-                ["email", "Email address", "email"],
-                ["gender", "Gender", "text"],
-                ["dateOfBirth", "Date of birth", "date"],
-                ["height", "Height (cm)", "number"],
-                ["weight", "Weight (kg)", "number"],
-                ["fitnessLevel", "Fitness level", "text"],
-                ["primaryGoal", "Primary goal", "text"],
-                ["sport", "Sport", "text"],
-              ].map(([field, label, type]) => (
-                <label key={field} className='block'>
-                  <span className='mb-1.5 block text-sm font-medium text-slate-700'>{label}</span>
-                  <input
-                    type={type}
-                    value={draft[field]}
-                    onChange={(event) => updateDraft(field, event.target.value)}
-                    className='w-full rounded-xl border border-blue-100 px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
-                  />
-                </label>
-              ))}
-
-              <div className='flex flex-wrap gap-3 sm:col-span-2'>
-                <button
-                  type='submit'
-                  className='rounded-full bg-[#244C91] px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800'
-                >
-                  Save changes
-                </button>
-                <button
-                  type='button'
-                  onClick={cancelEditing}
-                  className='rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50'
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </section>
+        {saveMessage && (
+          <p
+            role='status'
+            className='rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-800'
+          >
+            {saveMessage}
+          </p>
+        )}
+        {error && profile && (
+          <p
+            role='alert'
+            className='rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700'
+          >
+            {error}
+          </p>
         )}
 
-        {/* Main columns */}
-        <section className='grid items-start gap-5 xl:grid-cols-12'>
-          {/* Personal information */}
-          <div className='rounded-2xl border border-blue-100 bg-white p-5 shadow-sm xl:col-span-4'>
-            <SectionTitle
-              icon={UserRound}
-              title='Personal Information'
-              action={<EditButton onClick={startEditing} />}
-            />
-
-            <div className='divide-y divide-blue-50'>
-              <InfoRow icon={UserRound} label='Full Name' value={profile.fullName} />
-              <InfoRow icon={Mail} label='Email' value={profile.email} />
-              <InfoRow icon={VenusAndMars} label='Gender' value={profile.gender} />
-              <InfoRow
-                icon={CalendarDays}
-                label='Date of Birth'
-                value={profile.dateOfBirth}
-                onAdd={!profile.dateOfBirth ? startEditing : undefined}
-              />
-              <InfoRow
-                icon={Ruler}
-                label='Height'
-                value={profile.height ? `${profile.height} cm` : ""}
-                onAdd={!profile.height ? startEditing : undefined}
-              />
-              <InfoRow
-                icon={Weight}
-                label='Weight'
-                value={profile.weight ? `${profile.weight} kg` : ""}
-                onAdd={!profile.weight ? startEditing : undefined}
-              />
-              <InfoRow icon={Activity} label='Fitness Level' value={profile.fitnessLevel} />
-              <InfoRow icon={Target} label='Primary Goal' value={profile.primaryGoal} />
-              <InfoRow icon={Dumbbell} label='Sport' value={profile.sport} />
+        <section className='relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-r from-[#E7F0FF] via-[#F2F7FF] to-[#DCEBFF] p-5 sm:p-7'>
+          <Mountain
+            className='pointer-events-none absolute -bottom-8 right-4 hidden text-blue-300/60 sm:block'
+            size={140}
+            strokeWidth={0.8}
+          />
+          <div className='relative flex flex-col gap-5 sm:flex-row sm:items-center'>
+            <div className='flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-white bg-blue-100 text-3xl font-bold text-[#193663] shadow-sm'>
+              {profile.fullName ? profile.fullName[0].toUpperCase() : <UserRound size={32} />}
+            </div>
+            <div className='min-w-0 flex-1'>
+              <h2 className='break-words text-xl font-bold text-[#193663] sm:text-2xl'>
+                {profile.fullName || "Athlete"}
+              </h2>
+              <p className='mt-1 flex items-center gap-2 break-all text-sm text-blue-800'>
+                <Mail size={15} />
+                {profile.email || "Email not added"}
+              </p>
+              <div className='mt-3 flex flex-wrap gap-2'>
+                {[profile.sport, profile.fitnessLevel, profile.competitionLevel]
+                  .filter(Boolean)
+                  .map((item) => (
+                    <span
+                      key={item}
+                      className='rounded-full border border-blue-200 bg-white/80 px-3 py-1 text-xs font-medium text-[#244C91]'
+                    >
+                      {item}
+                    </span>
+                  ))}
+              </div>
+            </div>
+            <div className='relative z-10 w-full rounded-xl border border-white/80 bg-white/75 p-4 sm:max-w-48'>
+              <div className='flex items-center justify-between gap-2'>
+                <span className='text-xs font-semibold text-slate-600'>Profile completion</span>
+                <span className='text-sm font-bold text-[#193663]'>{completion}%</span>
+              </div>
+              <div className='mt-3 h-2 overflow-hidden rounded-full bg-blue-100'>
+                <div
+                  className='h-full rounded-full bg-[#244C91]'
+                  style={{ width: `${completion}%` }}
+                />
+              </div>
+              <p className='mt-2 text-xs text-slate-500'>Add your workout preferences.</p>
             </div>
           </div>
+        </section>
 
-          {/* Goals and activity */}
-          <div className='space-y-5 xl:col-span-4'>
-            <div className='rounded-2xl border border-blue-100 bg-white p-5 shadow-sm'>
-              <SectionTitle
-                icon={Target}
-                title='Your Goals'
-                action={<EditButton onClick={startEditing} />}
-              />
-
-              <div className='flex items-center gap-3 rounded-xl bg-[#F0F6FF] p-4'>
-                <span className='flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 text-blue-700'>
-                  <Trophy size={22} />
-                </span>
-                <div className='min-w-0 flex-1'>
-                  <p className='text-xs text-slate-500'>Primary Goal</p>
-                  <p className='mt-1 font-semibold text-[#193663]'>{profile.primaryGoal}</p>
-                </div>
-                <span className='rounded-full bg-blue-100 px-2 py-1 text-[10px] font-semibold text-blue-700'>
-                  Goal
-                </span>
-              </div>
-
-              <h3 className='mb-3 mt-5 text-sm font-semibold text-[#193663]'>
-                Suggested goal areas
-              </h3>
-
-              <div className='space-y-3'>
-                {goals.map((goal) => (
-                  <div key={goal} className='flex items-center gap-3'>
-                    <CircleCheck size={21} className='text-blue-500' />
-                    <span className='text-sm text-slate-600'>{goal}</span>
-                  </div>
-                ))}
-              </div>
-
-              <p className='mt-4 text-xs leading-5 text-slate-400'>
-                These are suggestions, not saved goals. Edit your profile to update your primary
-                goal.
+        {editing && (
+          <form
+            onSubmit={saveProfile}
+            className='space-y-6 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6'
+          >
+            <div>
+              <h2 className='text-lg font-bold text-[#193663]'>Edit athlete profile</h2>
+              <p className='mt-1 text-sm text-slate-500'>
+                Choose your personal details and preferred workout filters.
               </p>
             </div>
 
-            <div className='rounded-2xl border border-blue-100 bg-white p-5 shadow-sm'>
-              <SectionTitle
-                icon={ChartNoAxesColumn}
-                title='Your Activity'
-                action={
-                  <a
-                    href='/progress'
-                    className='text-xs font-semibold text-blue-700 hover:underline'
-                  >
-                    View Progress
-                  </a>
-                }
-              />
-
-              <div className='flex min-h-40 flex-col items-center justify-center rounded-xl bg-[#F8FAFE] px-4 py-6 text-center'>
-                <div className='rounded-full bg-blue-100 p-4 text-blue-700'>
-                  <CalendarDays size={30} />
-                </div>
-                <h3 className='mt-3 font-semibold text-[#193663]'>No activity yet</h3>
-                <p className='mt-1 text-xs leading-5 text-slate-500'>
-                  Start your first workout to see your progress here.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats and recent activity */}
-          <div className='space-y-5 xl:col-span-4'>
-            <div className='rounded-2xl border border-blue-100 bg-white p-5 shadow-sm'>
-              <SectionTitle icon={ChartNoAxesColumn} title='Quick Stats' />
-
-              <div className='grid grid-cols-2 gap-3'>
-                <StatTile
-                  icon={Dumbbell}
-                  label='Workouts Completed'
-                  value='0'
-                  helper='Start your first workout'
-                />
-                <StatTile icon={Flame} label='Calories Burned' value='—' helper='No data yet' />
-                <StatTile
-                  icon={Clock3}
-                  label='Active Streak'
-                  value='0 days'
-                  helper='Build your habit'
-                />
-                <StatTile
-                  icon={Star}
-                  label='Overall Progress'
-                  value='—'
-                  helper='Track your workouts'
-                />
+            <div>
+              <h3 className='mb-3 text-sm font-bold text-[#193663]'>
+                Personal and athletic details
+              </h3>
+              <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-3'>
+                {fields.slice(0, 9).map(([field, label, type]) => (
+                  <ProfileInput
+                    key={field}
+                    field={field}
+                    label={label}
+                    type={type}
+                    value={draft[field]}
+                    onChange={updateDraft}
+                    options={choices[field]}
+                  />
+                ))}
               </div>
             </div>
 
-            <div className='rounded-2xl border border-blue-100 bg-white p-5 shadow-sm'>
-              <SectionTitle icon={Clock3} title='Recent Activity' />
+            <div className='border-t border-slate-100 pt-5'>
+              <h3 className='text-sm font-bold text-[#193663]'>
+                Workout recommendation preferences
+              </h3>
+              <p className='mb-4 mt-1 text-sm text-slate-500'>
+                These preferences provide default values for personalized workout recommendations.
+              </p>
+              <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-3'>
+                {fields.slice(9).map(([field, label, type]) => (
+                  <ProfileInput
+                    key={field}
+                    field={field}
+                    label={label}
+                    type={type}
+                    value={draft[field]}
+                    onChange={updateDraft}
+                    options={choices[field]}
+                  />
+                ))}
+                <label className='block sm:col-span-2 xl:col-span-3'>
+                  <span className='text-sm font-medium text-slate-700'>
+                    Additional preferences (optional)
+                  </span>
+                  <textarea
+                    name='workoutDescription'
+                    rows={3}
+                    value={draft.workoutDescription ?? ""}
+                    onChange={updateDraft}
+                    placeholder='For example: focus on stamina, avoid jumping exercises...'
+                    className='mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50'
+                  />
+                </label>
+              </div>
+              <p className='mt-3 text-xs leading-5 text-slate-500'>
+                Date of birth and exercise category are displayed for layout compatibility, but are
+                not saved because they are not currently included in the backend profile schema.
+                Email is read-only.
+              </p>
+            </div>
 
-              <div className='flex items-start gap-3 border-t border-blue-50 py-4'>
-                <span className='rounded-full bg-blue-50 p-2 text-blue-700'>
-                  <CircleCheck size={18} />
-                </span>
-                <div>
-                  <p className='text-sm font-medium text-slate-700'>Profile page ready</p>
-                  <p className='mt-1 text-xs text-slate-500'>
-                    Your fitness details can be added here.
+            <div className='flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end'>
+              <button
+                type='button'
+                onClick={cancelEditing}
+                disabled={saving}
+                className='rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60'
+              >
+                Cancel
+              </button>
+              <button
+                type='submit'
+                disabled={saving}
+                className='rounded-xl bg-[#244C91] px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60'
+              >
+                {saving ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </form>
+        )}
+
+        <div className='grid items-start gap-5 xl:grid-cols-2'>
+          <Section
+            icon={UserRound}
+            title='Personal & Athletic Details'
+            subtitle='Core information attached to your athlete profile.'
+            action={
+              <button
+                onClick={startEditing}
+                className='text-xs font-semibold text-blue-700 hover:underline'
+              >
+                Edit
+              </button>
+            }
+          >
+            <div className='grid gap-x-6 sm:grid-cols-2'>
+              {displayFields.map(([label, value]) => (
+                <div key={label} className='min-w-0 border-b border-slate-100 py-3'>
+                  <p className='text-xs font-medium uppercase tracking-wide text-slate-500'>
+                    {label}
+                  </p>
+                  <p className='mt-1 break-words text-sm font-semibold text-slate-800'>
+                    {value || "Not added"}
                   </p>
                 </div>
-              </div>
+              ))}
+            </div>
+          </Section>
 
-              <div className='flex items-start gap-3 border-t border-blue-50 py-4'>
-                <span className='rounded-full bg-blue-50 p-2 text-blue-700'>
-                  <Sparkles size={18} />
-                </span>
-                <div>
-                  <p className='text-sm font-medium text-slate-700'>Recommendations</p>
-                  <p className='mt-1 text-xs text-slate-500'>
-                    Personalize your workout preferences to get started.
+          <Section
+            icon={Settings2}
+            title='Workout Preferences'
+            subtitle='Settings to guide personalized workout recommendations.'
+            action={
+              <button
+                onClick={startEditing}
+                className='text-xs font-semibold text-blue-700 hover:underline'
+              >
+                Edit
+              </button>
+            }
+          >
+            <div className='grid gap-3 sm:grid-cols-2'>
+              {workoutFields.map(([label, value]) => (
+                <div key={label} className='min-w-0 rounded-xl bg-[#F1F6FD] p-3.5'>
+                  <p className='text-xs font-medium text-slate-500'>{label}</p>
+                  <p className='mt-1 break-words text-sm font-semibold text-[#193663]'>
+                    {value || "Not set"}
                   </p>
                 </div>
-              </div>
+              ))}
             </div>
-          </div>
-        </section>
-
-        {/* Workout preferences */}
-        <section className='rounded-2xl border border-blue-100 bg-white p-5 shadow-sm'>
-          <SectionTitle
-            icon={Settings}
-            title='Your Workout Preferences'
-            action={<EditButton onClick={startEditing} />}
-          />
-
-          <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-5'>
-            {[
-              { label: "Equipment", value: profile.equipment, icon: CalendarDays },
-              { label: "Workout Type", value: profile.workoutType, icon: Dumbbell },
-              { label: "Difficulty", value: profile.difficulty, icon: Settings },
-              { label: "Target Area", value: profile.targetArea, icon: Target },
-              { label: "Session Duration", value: profile.sessionDuration, icon: Clock3 },
-            ].map(({ label, value, icon: Icon }) => (
-              <div key={label} className='flex items-center gap-3 rounded-xl bg-[#F1F6FD] p-4'>
-                <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700'>
-                  <Icon size={19} />
-                </span>
-                <div className='min-w-0'>
-                  <p className='text-xs text-slate-500'>{label}</p>
-                  <p className='mt-1 break-words text-sm font-medium text-[#315D9E]'>{value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Motivational tip */}
-        <section className='flex items-start gap-4 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-white p-5'>
-          <span className='rounded-full bg-white p-3 text-blue-700'>
-            <Lightbulb size={22} />
-          </span>
-          <div>
-            <h2 className='font-bold text-[#193663]'>Keep moving forward</h2>
-            <p className='mt-1 text-sm leading-6 text-slate-600'>
-              Progress takes time. Build consistency, follow your plan, and celebrate the small
-              wins.
-            </p>
+            {profile.workoutDescription && (
+              <p className='mt-3 rounded-xl border border-blue-100 p-3.5 text-sm text-slate-700'>
+                {profile.workoutDescription}
+              </p>
+            )}
             <a
               href='/recommendations'
-              className='mt-3 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline'
+              className='mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline'
             >
               Explore recommendations <ArrowRight size={16} />
             </a>
+          </Section>
+
+          <Section
+            icon={Target}
+            title='Fitness Goals'
+            subtitle='Goals returned by your saved profile.'
+          >
+            {profile.goals.length ? (
+              <div className='flex flex-wrap gap-2'>
+                {profile.goals.map((goal) => (
+                  <span
+                    key={goal}
+                    className='inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-2 text-sm font-medium text-[#244C91]'
+                  >
+                    <CheckCircle2 size={15} />
+                    {goal}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className='rounded-xl bg-[#F8FAFE] p-4'>
+                <p className='text-sm font-medium text-slate-700'>
+                  {profile.primaryGoal || "No saved goals returned"}
+                </p>
+                <p className='mt-1 text-xs leading-5 text-slate-500'>
+                  Choose a workout goal in Edit profile to save it to your athlete profile.
+                </p>
+              </div>
+            )}
+          </Section>
+
+          <Section
+            icon={HeartPulse}
+            title='Injury History'
+            subtitle='Review injury information returned by your profile.'
+          >
+            {profile.injuries.length ? (
+              <div className='space-y-3'>
+                {profile.injuries.map((injury, index) => (
+                  <div
+                    key={injury.id || `${injury.injuryName}-${index}`}
+                    className='rounded-xl bg-[#F8FAFE] p-4'
+                  >
+                    <p className='font-semibold text-[#193663]'>
+                      {injury.injuryName || "Injury record"}
+                    </p>
+                    <p className='mt-1 text-sm text-slate-600'>
+                      {injury.bodyRegion || "Body region not specified"}
+                      {injury.severity ? ` · ${injury.severity}` : ""}
+                    </p>
+                    {injury.recoveryStatus && (
+                      <p className='mt-1 text-xs text-slate-500'>
+                        Recovery status: {injury.recoveryStatus}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className='rounded-xl bg-[#F8FAFE] p-4 text-sm leading-6 text-slate-500'>
+                No injury records were returned by your profile API.
+              </p>
+            )}
+            <p className='mt-3 text-xs leading-5 text-slate-500'>
+              Recommendations are not medical clearance. Seek qualified advice before exercising
+              with an injury or ongoing pain.
+            </p>
+          </Section>
+        </div>
+
+        <section className='flex items-start gap-3 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-white p-5'>
+          <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue-700'>
+            <Trophy size={20} />
+          </span>
+          <div>
+            <h2 className='font-bold text-[#193663]'>Build a profile that works for you</h2>
+            <p className='mt-1 text-sm leading-6 text-slate-600'>
+              Your saved athlete details and workout preferences can personalize recommendations.
+            </p>
           </div>
         </section>
       </div>

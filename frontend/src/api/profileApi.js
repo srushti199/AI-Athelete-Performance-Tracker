@@ -11,3 +11,9 @@ export const updateOnboardingStep2 = (formData) => {
 export const submitInjuries = (data) => {
   return api.patch("/profile/onboardingStep3", data);
 };
+
+export const getProfile = () => {
+  return api.get("/profile");
+};
+
+export const updateProfile = (formData) => api.patch("/profile", formData);
