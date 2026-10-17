@@ -37,6 +37,7 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   profile      AthleteProfile?
+  workoutPlans WorkoutPlan[]
 }
 
 model AthleteProfile {
@@ -122,4 +123,45 @@ model AthleteTargetArea {
   preference WorkoutPreference @relation(fields: [preferenceId], references: [id], onDelete: Cascade)
 
   @@unique([preferenceId, targetArea])
+}
+
+
+model WorkoutPlan {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises WorkoutPlanExercise[]
+
+  @@index([userId])
+}
+
+model WorkoutPlanExercise {
+  id            String   @id @default(uuid())
+  planId        String
+  exerciseName  String
+  equipment     String?
+  bodyPart      String?
+  target        String?
+  difficulty    String?
+  category      String?
+  dayOfWeek     String?
+  scheduledDate DateTime?
+  sets          Int      @default(3)
+  reps          String   @default("10-12")
+  restSeconds   Int      @default(60)
+  completed     Boolean  @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  plan WorkoutPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@index([scheduledDate])
+  @@index([planId, completed])
 }
