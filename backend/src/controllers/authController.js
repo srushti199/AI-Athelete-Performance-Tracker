@@ -9,14 +9,17 @@ const signToken = (id) => {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 };
+
 const createSendToken = (user, res, statusCode) => {
   const token = signToken(user.id);
+
   res.cookie("token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
+
   res.status(statusCode).json({
     status: "success",
     token,
@@ -25,31 +28,28 @@ const createSendToken = (user, res, statusCode) => {
     },
   });
 };
+
 const signup = catchAsync(async (req, res, next) => {
   const { email, password, firstName, lastName } = req.body;
 
-  // Validate required fields
   if (!email || !password || !firstName || !lastName) {
-    return next(new AppError("Please provide  all required fields", 400));
+    return next(new AppError("Please provide all required fields", 400));
   }
 
-  //check if user already exist
   const existingUser = await prisma.User.findFirst({
-    where: {
-      email,
-    },
+    where: { email },
   });
+
   if (existingUser) {
     return next(new AppError("User with this email or username already exists", 409));
   }
 
-  //Hash password
-  const HashedPassword = await bcrypt.hash(password, 12);
+  const hashedPassword = await bcrypt.hash(password, 12);
 
   const user = await prisma.User.create({
     data: {
       email,
-      password: HashedPassword,
+      password: hashedPassword,
       firstName,
       lastName,
     },
@@ -58,7 +58,7 @@ const signup = catchAsync(async (req, res, next) => {
   createSendToken(user, res, 201);
 });
 
-const login = async (req, res, next) => {
+const login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -66,9 +66,7 @@ const login = async (req, res, next) => {
   }
 
   const user = await prisma.User.findUnique({
-    where: {
-      email: email,
-    },
+    where: { email },
   });
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -76,6 +74,21 @@ const login = async (req, res, next) => {
   }
 
   createSendToken(user, res, 200);
-};
+});
 
-module.exports = { signup, login };
+// Log out by clearing the authentication cookie.
+const logout = catchAsync(async (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+
+  res.status(200).json({
+    status: "success",
+    message: "Logged out successfully",
+  });
+});
+
+module.exports = { signup, login, logout };

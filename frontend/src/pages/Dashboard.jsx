@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowRight,
   CalendarDays,
@@ -13,9 +14,11 @@ import {
   Lightbulb,
 } from "lucide-react";
 
+import { Link } from "react-router-dom";
 import DashboardLayout from "../components/dashboard/layout/DashboardLayout";
 import StatCard from "../components/dashboard/StatCard";
 import RecommendationCard from "../components/dashboard/RecommendationCard";
+import { getDashboardData } from "../api/dashboardApi";
 
 const quickActions = [
   {
@@ -31,12 +34,6 @@ const quickActions = [
     href: "/recommendations",
   },
   {
-    title: "Track Nutrition",
-    description: "Build better habits",
-    icon: Utensils,
-    href: "/nutrition",
-  },
-  {
     title: "Update Profile",
     description: "Edit your fitness goals",
     icon: UserRound,
@@ -45,25 +42,110 @@ const quickActions = [
 ];
 
 export default function Dashboard() {
-  // Replace with the logged-in athlete's actual profile later.
-  const athleteName = "";
-  const profileCompleted = false;
+  const [dashboard, setDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Connect this array to the recommendation API later.
+  // Fetch data again without reloading the entire website.
+  const fetchDashboard = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) {
+        setLoading(true);
+      }
+
+      setError("");
+
+      const result = await getDashboardData();
+      setDashboard(result.data);
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to load dashboard data. Please try again.");
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  // Initial data fetch.
+  useEffect(() => {
+    let ignore = false;
+
+    const loadDashboard = async () => {
+      try {
+        const result = await getDashboardData();
+
+        if (!ignore) {
+          setDashboard(result.data);
+          setError("");
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(
+            err.response?.data?.message || "Unable to load dashboard data. Please try again.",
+          );
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadDashboard();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const athlete = dashboard?.athlete;
+  const stats = dashboard?.stats;
+
+  const athleteName = athlete
+    ? [athlete.firstName, athlete.lastName].filter(Boolean).join(" ")
+    : "";
+
+  const profileCompleted = athlete?.profileExists ?? false;
   const recommendations = [];
+
+  const workoutCount = stats?.totalWorkouts ?? 0;
+  const completedCount = stats?.completedExercises ?? 0;
+  const completionRate = stats?.completionRate ?? 0;
 
   return (
     <DashboardLayout name={athleteName}>
       <div className='space-y-6'>
-        {/* Welcome section */}
+        {error && (
+          <div
+            role='alert'
+            className='flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700'
+          >
+            <span>{error}</span>
+            <button
+              type='button'
+              onClick={() => fetchDashboard(true)}
+              disabled={loading}
+              className='font-semibold underline disabled:opacity-50'
+            >
+              {loading ? "Retrying..." : "Retry"}
+            </button>
+          </div>
+        )}
+
+        {loading && (
+          <p className='text-sm text-slate-500' role='status'>
+            Loading your dashboard...
+          </p>
+        )}
+
         <section className='mb-2'>
           <p className='text-sm leading-6 text-slate-500'>
-            Let's build your fitness journey. Get a plan tailored to your goals and training
-            preferences.
+            {athleteName
+              ? `Welcome back, ${athleteName}! Let's build your fitness journey.`
+              : "Let's build your fitness journey. Get a plan tailored to your goals and training preferences."}
           </p>
         </section>
 
-        {/* Hero and today's focus */}
         <section className='grid gap-5 xl:grid-cols-[1.7fr_0.9fr]'>
           <div className='relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-r from-[#EAF2FF] to-[#F5F8FF] p-6 sm:p-8'>
             <div className='relative z-10 max-w-lg'>
@@ -82,13 +164,13 @@ export default function Dashboard() {
                   : "Complete your profile to get personalized workout recommendations."}
               </p>
 
-              <a
-                href={profileCompleted ? "/recommendations" : "/profile"}
+              <Link
+                to={profileCompleted ? "/recommendations" : "/profile"}
                 className='mt-5 inline-flex items-center gap-3 rounded-full bg-[#244C91] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800'
               >
                 {profileCompleted ? "Get workout recommendations" : "Complete Profile"}
                 <ArrowRight size={17} />
-              </a>
+              </Link>
             </div>
 
             <div className='pointer-events-none absolute -bottom-10 -right-5 flex h-40 w-40 items-center justify-center rounded-full bg-blue-100/70 sm:right-8 sm:h-48 sm:w-48'>
@@ -104,49 +186,60 @@ export default function Dashboard() {
               <h2 className='font-semibold text-slate-900'>Today's focus</h2>
             </div>
 
-            <h3 className='mt-6 font-semibold text-slate-800'>No workout plan yet</h3>
+            <h3 className='mt-6 font-semibold text-slate-800'>
+              {workoutCount > 0
+                ? `${workoutCount} workout plan${workoutCount === 1 ? "" : "s"} available`
+                : "No workout plan yet"}
+            </h3>
+
             <p className='mt-2 text-sm leading-6 text-slate-500'>
-              Set your preferences to discover suitable exercises and build your first workout.
+              {workoutCount > 0
+                ? `${completedCount} exercises completed so far. Keep building your consistency!`
+                : "Set your preferences to discover suitable exercises and build your first workout."}
             </p>
 
-            <a
-              href='/recommendations'
+            <Link
+              to={workoutCount > 0 ? "/workout-plan" : "/recommendations"}
               className='mt-5 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-100'
             >
-              Explore workouts <ArrowRight size={16} />
-            </a>
+              {workoutCount > 0 ? "View workout plans" : "Explore workouts"}
+              <ArrowRight size={16} />
+            </Link>
           </div>
         </section>
 
-        {/* Summary cards */}
         <section className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
           <StatCard
             icon={Dumbbell}
-            label='Workouts completed'
-            value='0'
-            helper='Start your first workout'
+            label='Workout plans'
+            value={loading ? "—" : String(workoutCount)}
+            helper='Your saved workout plans'
           />
+
           <StatCard
             icon={Flame}
-            label='Nutrition plan'
-            value='Not set'
-            helper='Set your nutrition preferences'
+            label='Exercises completed'
+            value={loading ? "—" : String(completedCount)}
+            helper={`${stats?.pendingExercises ?? 0} exercises remaining`}
           />
+
           <StatCard
             icon={Target}
-            label='Fitness goals'
-            value='Not set'
-            helper='Choose your training goal'
+            label='Completion rate'
+            value={loading ? "—" : `${completionRate}%`}
+            helper='Based on saved exercises'
           />
+
           <StatCard
             icon={Clock}
-            label='Active streak'
-            value='0 days'
-            helper='Your journey starts today'
+            label='Profile status'
+            value={loading ? "—" : profileCompleted ? "Completed" : "Not set"}
+            helper={
+              profileCompleted ? "Your athlete profile exists" : "Complete your athlete profile"
+            }
           />
         </section>
 
-        {/* Recommendations and quick actions */}
         <section className='grid gap-5 xl:grid-cols-2'>
           <div className='rounded-2xl border border-blue-100 bg-white p-5 shadow-sm'>
             <div className='flex flex-wrap items-center justify-between gap-3'>
@@ -155,12 +248,12 @@ export default function Dashboard() {
                 <h2 className='font-bold text-slate-900'>Workout Recommendations</h2>
               </div>
 
-              <a
-                href='/recommendations'
+              <Link
+                to='/recommendations'
                 className='text-xs font-semibold text-blue-700 hover:underline'
               >
                 View all <ArrowRight className='ml-1 inline' size={14} />
-              </a>
+              </Link>
             </div>
 
             {recommendations.length > 0 ? (
@@ -178,17 +271,18 @@ export default function Dashboard() {
                 <h3 className='mt-4 font-semibold text-slate-900'>
                   Your training journey starts here
                 </h3>
+
                 <p className='mt-2 max-w-sm text-sm leading-6 text-slate-500'>
                   Tell us your equipment, fitness level, target muscle, and workout preferences to
                   get AI-powered exercise recommendations.
                 </p>
 
-                <a
-                  href='/recommendations'
+                <Link
+                  to='/recommendations'
                   className='mt-4 inline-flex items-center gap-2 rounded-full bg-[#244C91] px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800'
                 >
                   Get recommendations <ArrowRight size={16} />
-                </a>
+                </Link>
               </div>
             )}
           </div>
@@ -201,9 +295,9 @@ export default function Dashboard() {
 
             <div className='mt-5 grid gap-3 sm:grid-cols-2'>
               {quickActions.map(({ title, description, icon: Icon, href }) => (
-                <a
+                <Link
                   key={title}
-                  href={href}
+                  to={href}
                   className='flex min-h-24 items-center gap-3 rounded-xl border border-blue-100 p-4 transition hover:border-blue-300 hover:bg-blue-50/50'
                 >
                   <span className='flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700'>
@@ -216,39 +310,62 @@ export default function Dashboard() {
                       {description}
                     </span>
                   </span>
-                </a>
+                </Link>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Progress and fitness tip */}
         <section className='grid gap-5 xl:grid-cols-2'>
           <div className='rounded-2xl border border-blue-100 bg-white p-5 shadow-sm'>
             <div className='flex items-center gap-3'>
               <ChartNoAxesColumn className='text-blue-600' size={22} />
               <div>
                 <h2 className='font-bold text-slate-900'>Your Progress</h2>
-                <p className='mt-1 text-xs text-slate-500'>
-                  Complete workouts to start tracking your progress.
-                </p>
+                <p className='mt-1 text-xs text-slate-500'>Your saved exercise completion rate.</p>
               </div>
             </div>
 
-            <div className='mt-6 flex h-24 items-end justify-around border-b border-blue-100 px-2'>
-              {[0, 1, 2, 3, 4, 5, 6].map((day) => (
-                <div key={day} className='flex h-full flex-col justify-end'>
-                  <div className='h-2 w-2 rounded-full bg-blue-200' />
-                  <span className='mt-3 mb-2 text-xs text-slate-400'>
-                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][day]}
-                  </span>
-                </div>
-              ))}
+            <div className='mt-6'>
+              <div className='mb-2 flex justify-between text-sm'>
+                <span className='text-slate-600'>Exercises completed</span>
+                <span className='font-semibold text-[#244C91]'>
+                  {loading ? "—" : `${completionRate}%`}
+                </span>
+              </div>
+
+              <div
+                className='h-3 overflow-hidden rounded-full bg-blue-50'
+                role='progressbar'
+                aria-label='Exercise completion rate'
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={completionRate}
+              >
+                <div
+                  className='h-full rounded-full bg-[#244C91] transition-all duration-500'
+                  style={{
+                    width: `${Math.min(100, Math.max(0, completionRate))}%`,
+                  }}
+                />
+              </div>
             </div>
 
-            <p className='mt-4 text-center text-xs text-slate-500'>
-              Your activity will appear here once you begin training.
-            </p>
+            <div className='mt-6 grid grid-cols-2 gap-3'>
+              <div className='rounded-xl bg-[#F8FAFE] p-4'>
+                <p className='text-xs text-slate-500'>Completed</p>
+                <p className='mt-1 text-xl font-bold text-[#193663]'>
+                  {loading ? "—" : completedCount}
+                </p>
+              </div>
+
+              <div className='rounded-xl bg-[#F8FAFE] p-4'>
+                <p className='text-xs text-slate-500'>Pending</p>
+                <p className='mt-1 text-xl font-bold text-[#193663]'>
+                  {loading ? "—" : (stats?.pendingExercises ?? 0)}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className='rounded-2xl border border-blue-100 bg-white p-5 shadow-sm'>

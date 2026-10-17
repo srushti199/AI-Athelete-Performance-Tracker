@@ -7,10 +7,15 @@ import {
   Sparkles,
   Target,
   SlidersHorizontal,
+  Save,
+  Check,
+  X,
 } from "lucide-react";
+
 import DashboardLayout from "../components/dashboard/layout/DashboardLayout";
 import { getRecommendations } from "../services/recommendationService";
 import { getProfile } from "../api/profileApi";
+import { createWorkoutPlan } from "../api/workoutPlanApi";
 
 const BODY_PARTS = [
   "back",
@@ -24,6 +29,7 @@ const BODY_PARTS = [
   "upper legs",
   "waist",
 ];
+
 const TARGETS = [
   "abductors",
   "abs",
@@ -45,6 +51,7 @@ const TARGETS = [
   "triceps",
   "upper back",
 ];
+
 const EQUIPMENT = [
   "assisted",
   "assisted (towel)",
@@ -68,6 +75,7 @@ const EQUIPMENT = [
   "weighted",
   "wheel roller",
 ];
+
 const CATEGORIES = [
   "balance",
   "cardio",
@@ -77,6 +85,7 @@ const CATEGORIES = [
   "strength",
   "stretching",
 ];
+
 const DIFFICULTIES = ["Beginner", "Intermediate", "Advanced"];
 
 const DEFAULT_PREFERENCES = {
@@ -99,19 +108,25 @@ const normalize = (value) =>
 function matchOption(value, options, aliases = {}) {
   const normalized = normalize(value);
   const mapped = aliases[normalized] || normalized;
+
   return options.find((option) => normalize(option) === mapped);
 }
 
 function uniqueMatches(values, options, aliases = {}) {
   const list = Array.isArray(values) ? values : values ? [values] : [];
+
   return [...new Set(list.map((value) => matchOption(value, options, aliases)).filter(Boolean))];
 }
 
 function toRecommendationPreferences(profile) {
   const workout = profile?.workoutPreference;
+
   const savedEquipment = (workout?.equipment || []).map((item) => item.equipment).filter(Boolean);
+
   const savedTypes = (workout?.workoutTypes || []).map((item) => item.workoutType).filter(Boolean);
+
   const savedAreas = (workout?.targetAreas || []).map((item) => item.targetArea).filter(Boolean);
+
   const goals = (profile?.profileGoals || []).map((item) => item.goalKey).filter(Boolean);
 
   const bodyPartAliases = {
@@ -122,6 +137,7 @@ function toRecommendationPreferences(profile) {
     "full body": "upper legs",
     "cardiovascular endurance": "cardio",
   };
+
   const equipmentAliases = {
     bodyweight: "body weight",
     dumbbells: "dumbbell",
@@ -132,7 +148,12 @@ function toRecommendationPreferences(profile) {
     machine: "leverage machine",
     "full gym": "leverage machine",
   };
-  const categoryAliases = { flexibility: "stretching", "sports-specific": "strength" };
+
+  const categoryAliases = {
+    flexibility: "stretching",
+    "sports-specific": "strength",
+  };
+
   const difficultyAliases = {
     beginner: "Beginner",
     intermediate: "Intermediate",
@@ -140,7 +161,9 @@ function toRecommendationPreferences(profile) {
   };
 
   const bodyParts = uniqueMatches(savedAreas, BODY_PARTS, bodyPartAliases);
+
   const targets = uniqueMatches(savedAreas, TARGETS);
+
   const defaultTargetByBodyPart = {
     back: "lats",
     cardio: "cardiovascular system",
@@ -154,22 +177,29 @@ function toRecommendationPreferences(profile) {
     waist: "abs",
   };
 
-  // A saved target area may be a body-part label (e.g. shoulders) rather than a muscle.
   const finalTargets = targets.length
     ? targets
     : bodyParts.map((part) => defaultTargetByBodyPart[part]).filter(Boolean);
 
   const equipment = uniqueMatches(savedEquipment, EQUIPMENT, equipmentAliases);
+
   const categories = uniqueMatches(savedTypes, CATEGORIES, categoryAliases);
+
   const rawDifficulty = workout?.difficulty ?? profile?.activityLevel ?? "Intermediate";
+
   const difficulty = matchOption(rawDifficulty, DIFFICULTIES, difficultyAliases) || "Intermediate";
 
   return {
     equipment: equipment.length ? equipment : [...DEFAULT_PREFERENCES.equipment],
+
     bodyParts: bodyParts.length ? bodyParts : [...DEFAULT_PREFERENCES.bodyParts],
+
     targets: finalTargets.length ? finalTargets : [...DEFAULT_PREFERENCES.targets],
+
     difficulty,
+
     categories: categories.length ? categories : [...DEFAULT_PREFERENCES.categories],
+
     description: [
       goals.length ? `Fitness goals: ${goals.join(", ")}` : "",
       workout?.workoutDescription || "",
@@ -189,7 +219,9 @@ function MultiSelect({ id, label, options, values, onChange, disabled }) {
   return (
     <fieldset className='min-w-0'>
       <legend className='text-sm font-medium text-slate-700'>{label}</legend>
+
       <p className='mt-1 text-xs text-slate-500'>Select one or more options.</p>
+
       <div
         id={id}
         className='mt-2 grid max-h-44 grid-cols-1 gap-1 overflow-y-auto rounded-xl border border-blue-100 bg-white p-3 sm:grid-cols-2'
@@ -197,7 +229,9 @@ function MultiSelect({ id, label, options, values, onChange, disabled }) {
         {options.map((option) => (
           <label
             key={option}
-            className={`flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm capitalize text-slate-700 hover:bg-blue-50 ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+            className={`flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm capitalize text-slate-700 hover:bg-blue-50 ${
+              disabled ? "cursor-not-allowed opacity-60" : ""
+            }`}
           >
             <input
               type='checkbox'
@@ -206,10 +240,12 @@ function MultiSelect({ id, label, options, values, onChange, disabled }) {
               disabled={disabled}
               className='mt-0.5 accent-[#244C91]'
             />
+
             <span>{option}</span>
           </label>
         ))}
       </div>
+
       {values.length === 0 && (
         <p className='mt-1 text-xs text-amber-700'>Select at least one option.</p>
       )}
@@ -222,20 +258,35 @@ export default function Recommendations() {
   const [profilePreferences, setProfilePreferences] = useState(null);
   const [mode, setMode] = useState("personalized");
   const [recommendations, setRecommendations] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
 
+  // Workout plan state
+  const [selectedExercises, setSelectedExercises] = useState([]);
+  const [planName, setPlanName] = useState("My Workout Plan");
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [saveError, setSaveError] = useState(false);
+
   async function requestRecommendations(currentPreferences) {
     setLoading(true);
     setError("");
+    setSaveMessage("");
+
+    // Clear old selections when the recommendation results change.
+    setSelectedExercises([]);
     setSearched(true);
+
     try {
       const result = await getRecommendations(currentPreferences);
+
       setRecommendations(result?.recommendations || []);
     } catch (err) {
       setRecommendations([]);
+
       setError(
         err.response?.data?.message ||
           err.response?.data?.detail ||
@@ -249,21 +300,31 @@ export default function Recommendations() {
 
   useEffect(() => {
     let active = true;
+
     async function loadProfile() {
       setProfileLoading(true);
       setError("");
+
       try {
         const response = await getProfile();
+
         if (!active) return;
+
         const profile = response.data?.data?.profile;
-        if (!profile)
+
+        if (!profile) {
           throw new Error("Athlete profile not found. Please complete your profile first.");
+        }
+
         const saved = toRecommendationPreferences(profile);
+
         setProfilePreferences(saved);
         setPreferences(saved);
+
         await requestRecommendations(saved);
       } catch (err) {
         if (!active) return;
+
         setError(
           err.response?.data?.message ||
             err.message ||
@@ -273,42 +334,56 @@ export default function Recommendations() {
         if (active) setProfileLoading(false);
       }
     }
+
     loadProfile();
+
     return () => {
       active = false;
     };
   }, []);
 
   function updatePreference(name, value) {
-    setPreferences((previous) => ({ ...previous, [name]: value }));
+    setPreferences((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
   }
 
   function handleModeChange(nextMode) {
     setError("");
+    setSaveMessage("");
     setMode(nextMode);
+
     if (nextMode === "personalized") {
       if (!profilePreferences) {
         setRecommendations([]);
         setSearched(false);
+
         setError("Your saved profile could not be loaded. Please try again or use Customize mode.");
+
         return;
       }
+
       setPreferences(profilePreferences);
       requestRecommendations(profilePreferences);
     } else {
       setPreferences(profilePreferences || DEFAULT_PREFERENCES);
       setRecommendations([]);
+      setSelectedExercises([]);
       setSearched(false);
     }
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+
     const current = mode === "personalized" ? profilePreferences : preferences;
+
     if (!current) {
       setError("Saved preferences are unavailable. Try Customize mode.");
       return;
     }
+
     if (
       !current.equipment?.length ||
       !current.bodyParts?.length ||
@@ -320,7 +395,77 @@ export default function Recommendations() {
       );
       return;
     }
+
     await requestRecommendations(current);
+  }
+
+  function toggleExercise(exercise) {
+    setSaveMessage("");
+    setSaveError(false);
+
+    // Exercise names are used to identify selections because the current
+    // recommendation response does not guarantee a unique exercise ID.
+    setSelectedExercises((previous) => {
+      const alreadySelected = previous.some((item) => item.name === exercise.name);
+
+      if (alreadySelected) {
+        return previous.filter((item) => item.name !== exercise.name);
+      }
+
+      return [...previous, exercise];
+    });
+  }
+
+  async function handleSavePlan() {
+    if (!planName.trim()) {
+      setSaveError(true);
+      setSaveMessage("Please enter a workout plan name.");
+      return;
+    }
+
+    if (selectedExercises.length === 0) {
+      setSaveError(true);
+      setSaveMessage("Please select at least one exercise.");
+      return;
+    }
+
+    setSavingPlan(true);
+    setSaveMessage("");
+    setSaveError(false);
+
+    try {
+      await createWorkoutPlan({
+        name: planName.trim(),
+        description: "Exercises selected from AI recommendations",
+
+        exercises: selectedExercises.map((exercise) => ({
+          name: exercise.name,
+          equipment: exercise.equipment,
+          bodyPart: exercise.bodyPart,
+          target: exercise.target,
+          difficulty: exercise.difficulty,
+          category: exercise.category,
+          sets: 3,
+          reps: "10-12",
+          restSeconds: 60,
+        })),
+      });
+
+      setSaveMessage("Workout plan saved successfully! You can view it on your Workout Plan page.");
+
+      setSelectedExercises([]);
+    } catch (err) {
+      setSaveError(true);
+
+      setSaveMessage(
+        err.response?.data?.message ||
+          err.response?.data?.detail ||
+          err.message ||
+          "Unable to save your workout plan.",
+      );
+    } finally {
+      setSavingPlan(false);
+    }
   }
 
   const controlsDisabled = mode === "personalized" || profileLoading;
@@ -328,17 +473,21 @@ export default function Recommendations() {
   return (
     <DashboardLayout>
       <div className='space-y-6'>
+        {/* Page heading */}
         <section>
           <p className='text-sm font-medium text-blue-600'>Training / Recommendations</p>
+
           <div className='mt-2 flex flex-col justify-between gap-3 sm:flex-row sm:items-center'>
             <div>
               <h2 className='text-2xl font-bold text-[#17233f] sm:text-3xl'>
                 Workout Recommendations
               </h2>
+
               <p className='mt-2 text-sm leading-6 text-slate-500'>
                 Discover exercises personalized to your athlete profile and training preferences.
               </p>
             </div>
+
             <span className='inline-flex w-fit items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-medium text-blue-700'>
               <Sparkles size={17} />
               AI powered
@@ -346,32 +495,40 @@ export default function Recommendations() {
           </div>
         </section>
 
+        {/* Hero section */}
         <section className='relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-r from-[#EAF2FF] to-[#F5F8FF] p-6 sm:p-8'>
           <div className='relative z-10 max-w-xl'>
             <span className='inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/80 px-3 py-1 text-xs font-semibold text-blue-700'>
               <Target size={14} />
               YOUR TRAINING JOURNEY
             </span>
+
             <h3 className='mt-4 text-xl font-bold text-[#193663] sm:text-2xl'>
               Train smarter. Perform better.
             </h3>
+
             <p className='mt-2 text-sm leading-6 text-slate-600'>
               Use your saved athlete profile or customize your workout preferences for this search.
             </p>
           </div>
+
           <div className='pointer-events-none absolute -bottom-8 right-5 flex h-32 w-32 items-center justify-center rounded-full bg-blue-100/80 text-blue-400 sm:right-12 sm:h-40 sm:w-40'>
             <Dumbbell size={65} strokeWidth={1.4} />
           </div>
         </section>
 
+        {/* Preferences and results */}
         <section className='grid items-start gap-5 xl:grid-cols-[350px_minmax(0,1fr)]'>
+          {/* Preferences panel */}
           <div className='rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6'>
             <div className='mb-6 flex items-center gap-3'>
               <div className='rounded-xl bg-blue-50 p-3 text-blue-700'>
                 <SlidersHorizontal size={21} />
               </div>
+
               <div>
                 <h3 className='font-bold text-[#17233f]'>Workout preferences</h3>
+
                 <p className='mt-1 text-xs text-slate-500'>
                   Choose how to personalize your results
                 </p>
@@ -383,14 +540,23 @@ export default function Recommendations() {
                 type='button'
                 onClick={() => handleModeChange("personalized")}
                 disabled={profileLoading}
-                className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${mode === "personalized" ? "bg-[#244C91] text-white shadow-sm" : "text-slate-600 hover:bg-white"}`}
+                className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  mode === "personalized"
+                    ? "bg-[#244C91] text-white shadow-sm"
+                    : "text-slate-600 hover:bg-white"
+                }`}
               >
                 My Profile
               </button>
+
               <button
                 type='button'
                 onClick={() => handleModeChange("manual")}
-                className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${mode === "manual" ? "bg-[#244C91] text-white shadow-sm" : "text-slate-600 hover:bg-white"}`}
+                className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+                  mode === "manual"
+                    ? "bg-[#244C91] text-white shadow-sm"
+                    : "text-slate-600 hover:bg-white"
+                }`}
               >
                 Customize
               </button>
@@ -401,6 +567,7 @@ export default function Recommendations() {
                 ? "Recommendations use your saved profile preferences."
                 : "Select multiple options if needed. These changes apply to this search only and will not update your saved profile."}
             </p>
+
             {profileLoading && (
               <div className='mb-4 flex items-center gap-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-700'>
                 <LoaderCircle size={17} className='animate-spin' />
@@ -417,6 +584,7 @@ export default function Recommendations() {
                 onChange={(value) => updatePreference("bodyParts", value)}
                 disabled={controlsDisabled}
               />
+
               <MultiSelect
                 id='targets'
                 label='Target muscles / systems'
@@ -425,6 +593,7 @@ export default function Recommendations() {
                 onChange={(value) => updatePreference("targets", value)}
                 disabled={controlsDisabled}
               />
+
               <MultiSelect
                 id='equipment'
                 label='Equipment'
@@ -433,10 +602,12 @@ export default function Recommendations() {
                 onChange={(value) => updatePreference("equipment", value)}
                 disabled={controlsDisabled}
               />
+
               <div>
                 <label htmlFor='difficulty' className='text-sm font-medium text-slate-700'>
                   Difficulty
                 </label>
+
                 <select
                   id='difficulty'
                   value={preferences.difficulty}
@@ -451,6 +622,7 @@ export default function Recommendations() {
                   ))}
                 </select>
               </div>
+
               <MultiSelect
                 id='categories'
                 label='Workout categories'
@@ -459,11 +631,13 @@ export default function Recommendations() {
                 onChange={(value) => updatePreference("categories", value)}
                 disabled={controlsDisabled}
               />
+
               {mode === "manual" && (
                 <div>
                   <label htmlFor='description' className='text-sm font-medium text-slate-700'>
                     Additional preferences (optional)
                   </label>
+
                   <textarea
                     id='description'
                     value={preferences.description || ""}
@@ -474,6 +648,7 @@ export default function Recommendations() {
                   />
                 </div>
               )}
+
               <button
                 type='submit'
                 disabled={
@@ -496,16 +671,19 @@ export default function Recommendations() {
             </form>
           </div>
 
+          {/* Recommendation results */}
           <div className='min-w-0'>
             <div className='mb-5 flex items-center justify-between gap-3'>
               <div>
                 <h3 className='text-xl font-bold text-[#17233f]'>Recommended exercises</h3>
+
                 <p className='mt-1 text-sm text-slate-500'>
                   {recommendations.length > 0
                     ? `${recommendations.length} exercises found`
                     : "Exercises matched to your preferences"}
                 </p>
               </div>
+
               <div className='rounded-xl border border-blue-100 bg-white p-3 text-blue-700'>
                 <Dumbbell size={22} />
               </div>
@@ -517,92 +695,206 @@ export default function Recommendations() {
                 <p>{error}</p>
               </div>
             )}
+
             {!searched && !loading && !profileLoading && (
               <div className='flex min-h-72 flex-col items-center justify-center rounded-2xl border border-blue-100 bg-white px-6 py-12 text-center shadow-sm'>
                 <div className='rounded-full bg-blue-50 p-4 text-blue-700'>
                   <Dumbbell size={32} />
                 </div>
+
                 <h3 className='mt-4 font-bold text-[#17233f]'>Your next workout starts here</h3>
+
                 <p className='mt-2 max-w-sm text-sm leading-6 text-slate-500'>
                   Use your profile or customize your preferences to find exercises for your next
                   workout.
                 </p>
               </div>
             )}
+
             {loading && (
               <div className='flex min-h-72 flex-col items-center justify-center rounded-2xl border border-blue-100 bg-white shadow-sm'>
                 <LoaderCircle size={34} className='animate-spin text-blue-600' />
+
                 <p className='mt-4 font-semibold text-[#17233f]'>Finding your exercises</p>
+
                 <p className='mt-2 text-sm text-slate-500'>
                   Matching exercises to your preferences...
                 </p>
               </div>
             )}
 
+            {/* Save workout plan panel */}
+            {!loading && recommendations.length > 0 && (
+              <section className='mb-5 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm'>
+                <div className='flex flex-col gap-4 sm:flex-row sm:items-end'>
+                  <div className='flex-1'>
+                    <label htmlFor='planName' className='text-sm font-semibold text-[#17233f]'>
+                      Workout plan name
+                    </label>
+
+                    <input
+                      id='planName'
+                      value={planName}
+                      onChange={(event) => setPlanName(event.target.value)}
+                      maxLength={100}
+                      placeholder='e.g. Upper Body Workout'
+                      className={inputClass}
+                    />
+                  </div>
+
+                  <button
+                    type='button'
+                    onClick={handleSavePlan}
+                    disabled={savingPlan || selectedExercises.length === 0}
+                    className='flex items-center justify-center gap-2 rounded-xl bg-[#244C91] px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50'
+                  >
+                    {savingPlan ? (
+                      <LoaderCircle size={18} className='animate-spin' />
+                    ) : (
+                      <Save size={18} />
+                    )}
+
+                    {savingPlan ? "Saving..." : "Save Workout Plan"}
+                  </button>
+                </div>
+
+                <div className='mt-3 flex items-center justify-between gap-3'>
+                  <p className='text-sm text-slate-500'>
+                    {selectedExercises.length} exercise(s) selected
+                  </p>
+
+                  {selectedExercises.length > 0 && (
+                    <button
+                      type='button'
+                      onClick={() => {
+                        setSelectedExercises([]);
+                        setSaveMessage("");
+                      }}
+                      className='text-sm font-medium text-blue-700 hover:underline'
+                    >
+                      Clear selection
+                    </button>
+                  )}
+                </div>
+
+                {saveMessage && (
+                  <p
+                    role='status'
+                    className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+                      saveError ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
+                    }`}
+                  >
+                    {saveMessage}
+                  </p>
+                )}
+              </section>
+            )}
+
+            {/* Exercise cards */}
             {!loading && recommendations.length > 0 && (
               <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-                {recommendations.map((exercise, index) => (
-                  <article
-                    key={`${exercise.name}-${index}`}
-                    className='rounded-2xl border border-blue-100 bg-white p-5 shadow-sm transition hover:border-blue-200 hover:shadow-md'
-                  >
-                    <div className='flex items-start justify-between gap-3'>
-                      <div className='flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700'>
-                        <Dumbbell size={22} />
-                      </div>
-                      <span className='rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700'>
-                        {exercise.difficulty || "Not specified"}
-                      </span>
-                    </div>
-                    <h4 className='mt-4 font-bold capitalize text-[#17233f]'>{exercise.name}</h4>
-                    <div className='mt-4 flex flex-wrap gap-2'>
-                      {[exercise.bodyPart, exercise.target, exercise.equipment, exercise.category]
-                        .filter(Boolean)
-                        .map((tag) => (
-                          <span
-                            key={tag}
-                            className='rounded-lg bg-[#F8FAFE] px-3 py-1.5 text-xs capitalize text-slate-600'
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                    </div>
-                    {exercise.fallback_used && (
-                      <p className='mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800'>
-                        No exact match found for your equipment and difficulty level. Showing
-                        alternative exercises instead.
-                      </p>
-                    )}
-                    {typeof exercise.final_score === "number" && (
-                      <div className='mt-5'>
-                        <div className='mb-2 flex justify-between text-xs'>
-                          <span className='text-slate-500'>Model similarity</span>
-                          <span className='font-semibold text-blue-700'>
-                            {(exercise.final_score * 100).toFixed(1)}%
-                          </span>
+                {recommendations.map((exercise, index) => {
+                  const selected = selectedExercises.some((item) => item.name === exercise.name);
+
+                  return (
+                    <article
+                      key={`${exercise.name}-${index}`}
+                      className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
+                        selected
+                          ? "border-blue-400 ring-1 ring-blue-200"
+                          : "border-blue-100 hover:border-blue-200"
+                      }`}
+                    >
+                      <div className='flex items-start justify-between gap-3'>
+                        <div className='flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700'>
+                          <Dumbbell size={22} />
                         </div>
-                        <div className='h-1.5 overflow-hidden rounded-full bg-blue-50'>
-                          <div
-                            className='h-full rounded-full bg-blue-600'
-                            style={{
-                              width: `${Math.max(0, Math.min(100, exercise.final_score * 100))}%`,
-                            }}
-                          />
+
+                        <div className='flex flex-wrap items-center justify-end gap-2'>
+                          <span className='rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700'>
+                            {exercise.difficulty || "Not specified"}
+                          </span>
+
+                          <label className='flex cursor-pointer items-center gap-1.5 rounded-lg border border-blue-100 px-2 py-1.5 text-sm text-blue-700 hover:bg-blue-50'>
+                            <input
+                              type='checkbox'
+                              checked={selected}
+                              onChange={() => toggleExercise(exercise)}
+                              className='h-4 w-4 accent-[#244C91]'
+                              aria-label={`Select ${exercise.name}`}
+                            />
+
+                            {selected ? (
+                              <>
+                                <Check size={14} />
+                                Selected
+                              </>
+                            ) : (
+                              "Select"
+                            )}
+                          </label>
                         </div>
                       </div>
-                    )}
-                    <div className='mt-5 flex items-center gap-2 border-t border-slate-100 pt-4 text-sm font-medium text-blue-700'>
-                      <Sparkles size={16} />
-                      AI recommendation
-                    </div>
-                  </article>
-                ))}
+
+                      <h4 className='mt-4 font-bold capitalize text-[#17233f]'>{exercise.name}</h4>
+
+                      <div className='mt-4 flex flex-wrap gap-2'>
+                        {[exercise.bodyPart, exercise.target, exercise.equipment, exercise.category]
+                          .filter(Boolean)
+                          .map((tag) => (
+                            <span
+                              key={tag}
+                              className='rounded-lg bg-[#F8FAFE] px-3 py-1.5 text-xs capitalize text-slate-600'
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                      </div>
+
+                      {exercise.fallback_used && (
+                        <p className='mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800'>
+                          No exact match found for your equipment and difficulty level. Showing
+                          alternative exercises instead.
+                        </p>
+                      )}
+
+                      {typeof exercise.final_score === "number" && (
+                        <div className='mt-5'>
+                          <div className='mb-2 flex justify-between text-xs'>
+                            <span className='text-slate-500'>Model similarity</span>
+
+                            <span className='font-semibold text-blue-700'>
+                              {(exercise.final_score * 100).toFixed(1)}%
+                            </span>
+                          </div>
+
+                          <div className='h-1.5 overflow-hidden rounded-full bg-blue-50'>
+                            <div
+                              className='h-full rounded-full bg-blue-600'
+                              style={{
+                                width: `${Math.max(0, Math.min(100, exercise.final_score * 100))}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className='mt-5 flex items-center gap-2 border-t border-slate-100 pt-4 text-sm font-medium text-blue-700'>
+                        <Sparkles size={16} />
+                        AI recommendation
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             )}
+
             {!loading && searched && !error && recommendations.length === 0 && (
               <div className='rounded-2xl border border-blue-100 bg-white px-6 py-14 text-center shadow-sm'>
                 <Search size={30} className='mx-auto text-slate-400' />
+
                 <h3 className='mt-4 font-bold text-[#17233f]'>No exercises found</h3>
+
                 <p className='mt-2 text-sm text-slate-500'>
                   Try different preferences or equipment.
                 </p>

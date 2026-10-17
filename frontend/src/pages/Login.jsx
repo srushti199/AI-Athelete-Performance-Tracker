@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import InputField from "../components/InputField";
 import { validateLogin } from "../utils/validateLogin";
@@ -6,6 +7,8 @@ import useForm from "../hooks/useForm";
 import { loginUser } from "../api/authApi";
 
 function Login({ onClose, onSwitchToSignup }) {
+  const navigate = useNavigate();
+
   const { formData, errors, handleChange, setErrors } = useForm({
     email: "",
     password: "",
@@ -21,6 +24,9 @@ function Login({ onClose, onSwitchToSignup }) {
       try {
         await loginUser(formData);
         console.log("User logged in");
+
+        // Navigate to the dashboard after successful login
+        navigate("/dashboard", { replace: true });
       } catch (error) {
         console.error("Login failed:", error);
 
